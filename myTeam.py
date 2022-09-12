@@ -22,7 +22,7 @@ import game
 #################
 
 def createTeam(firstIndex, secondIndex, isRed,
-               first = 'DummyAgent', second = 'DummyAgent', numTraining = 0):
+               first='OffensiveReflexAgent', second='DefensiveReflexAgent', numTraining=0):
   """
   This function should return a list of two agents that will form the
   team, initialized using firstIndex and secondIndex as their agent
@@ -45,48 +45,61 @@ def createTeam(firstIndex, secondIndex, isRed,
 # Agents #
 ##########
 
-class DummyAgent(CaptureAgent):
-  """
-  A Dummy agent to serve as an example of the necessary agent structure.
-  You should look at baselineTeam.py for more details about how to
-  create an agent as this is the bare minimum.
-  """
 
+# Common Commands:
+# 
+# Run against baseline team:
+# python capture.py -r myTeam -b baselineTeam
+# 
+# Run against itself:
+# python capture.py -r myTeam -b myTeam
+# 
+# Run with different layout:
+# 
+# python capture.py -r myTeam -b baselineTeam -l officeCapture
+# ---------------
+
+class OffensiveReflexAgent(CaptureAgent):
   def registerInitialState(self, gameState):
-    """
-    This method handles the initial setup of the
-    agent to populate useful fields (such as what team
-    we're on).
+    self.start = gameState.getAgentPosition(self.index)
+    
+    # TODO: Initialize variables we need here:
+    # positions to ghosts, food, walls, and capsules
+    
+    CaptureAgent.registerInitialState(self, gameState)
+  
+  def chooseAction(self, gameState):
+    # TODO: Get information about the gameState
+    # Where is the closest food?
+    # Where is the closest ghost?
+    # Where is the closest capsule?
+    # Once we have decided what to do, we can call aStarSearch to find the best action
+    
+    return
 
-    A distanceCalculator instance caches the maze distances
-    between each pair of positions, so your agents can use:
-    self.distancer.getDistance(p1, p2)
 
-    IMPORTANT: This method may run for at most 15 seconds.
-    """
-
-    '''
-    Make sure you do not delete the following line. If you would like to
-    use Manhattan distances instead of maze distances in order to save
-    on initialization time, please take a look at
-    CaptureAgent.registerInitialState in captureAgents.py.
-    '''
+class DefensiveReflexAgent(CaptureAgent):
+  def registerInitialState(self, gameState):
+    self.start = gameState.getAgentPosition(self.index)
+    
+    # TODO: Initialize variables we need here:
+    # positions to food, enemy pacman, capsules and the entrances of 
+    # the ally's side of the maze
+    
     CaptureAgent.registerInitialState(self, gameState)
 
-    '''
-    Your initialization code goes here, if you need any.
-    '''
-
-
   def chooseAction(self, gameState):
-    """
-    Picks among actions randomly.
-    """
-    actions = gameState.getLegalActions(self.index)
-
-    '''
-    You should change this in your own agent.
-    '''
-
-    return random.choice(actions)
+    # TODO: Get information about the gameState
+    # Is the agent scared? Should we stay away from the enemy but as close as possible?
+    # Are there any enemies within 5 steps of the agent? Chase them!
+    # Is there any food that was present in the last observation that 
+    # was eaten? Go to that location.
+    # 
+    # Once we have decided what to do, we can call aStarSearch to find the best action
+    return
+  
+  def aStarSearch():
+    # TODO: Implement aStarSearch algorithm here with manhattan distance as heuristic
+    # Return the best action in aStarSearch
+    return
 

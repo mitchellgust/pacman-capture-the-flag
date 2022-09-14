@@ -61,11 +61,32 @@ def createTeam(firstIndex, secondIndex, isRed,
 
 class OffensiveReflexAgent(CaptureAgent):
   def registerInitialState(self, gameState):
+    # Initialise the start position
     self.start = gameState.getAgentPosition(self.index)
     
-    # TODO: Initialize variables we need here:
-    # positions to ghosts, food, walls, and capsules
-    
+    # Initialise Ghost Positions and Ghosts
+    self.ghostPositions = []
+    self.ghosts = self.getOpponents(gameState)
+
+    # Initialise Food Positions and Food
+    self.foodPositions = []
+    self.food = self.getFood(gameState).asList()
+
+    # Initialise Wall Positions and Walls
+    self.wallPositions = []
+    self.walls = gameState.getWalls().asList()
+
+    # Initialise Capsule Positions and Capsules
+    self.capsulePositions = []
+    self.capsules = self.getCapsules(gameState)
+
+    # Print variables
+    print("Start: ", self.start)
+    print("Ghosts: ", self.ghosts)
+    print("Food: ", self.food)
+    print("Walls: ", self.walls)
+    print("Capsules: ", self.capsules)
+
     CaptureAgent.registerInitialState(self, gameState)
   
   def chooseAction(self, gameState):

@@ -12,8 +12,11 @@
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 
 
+from lib2to3.pytree import Node
+from turtle import position
 from captureAgents import CaptureAgent
 import random, time, util
+from distanceCalculator import Distancer
 from game import Directions
 import game
 
@@ -59,47 +62,143 @@ def createTeam(firstIndex, secondIndex, isRed,
 # python capture.py -r myTeam -b baselineTeam -l officeCapture
 # ---------------
 
-class OffensiveReflexAgent(CaptureAgent):
+class BaselineAgent(CaptureAgent):
+
+  nullHeuristic = 0
+
+  class Node:
+    def __init__(self, state, path, cost):
+      self.state = state
+      self.path = path
+      self.cost = cost
+    
+    @property
+    def getState(self):
+      return self.state
+    
+    @property
+    def getPath(self):
+      return self.path
+    
+    @property
+    def getCost(self):
+      return self.cost
+
+  def aStarSearch(problem, heuristic=nullHeuristic):
+    def priorityQueueFunc(node: Node): 
+      # f(n) = g(n) + h(n) (priority = cost + estimatedCost)
+      return node.cost + heuristic(node.state, problem)
+    priorityQueue = util.PriorityQueueWithFunction(priorityQueueFunc)
+
+    initialNode = Node(problem.getStartState(), [], 0)
+    frontier = priorityQueue
+    frontier.push(initialNode)
+
+    reached = []
+    while not frontier.isEmpty():
+      state, path, cost = frontier.pop()
+      
+      if problem.isGoalState(state):
+          return path
+
+      if state in reached:
+          continue
+      
+      reached.append(state)
+
+      successor: Node
+      for successor in problem.getSuccessors(state):
+          successorPath = path + [successor.path]
+          successorCost = cost + successor.cost
+          successorNode = (successor.state, successorPath, successorCost)
+          
+          frontier.push(successorNode)
+
+    return None # Failure
+
+
+class OffensiveReflexAgent(BaselineAgent):
   def registerInitialState(self, gameState):
     # Initialise the start position
-    self.start = gameState.getAgentPosition(self.index)
+    self.startPosition = gameState.getAgentPosition(self.index)
     
-    # Initialise Ghost Positions and Ghosts
-    self.ghostPositions = []
+    # Initialise Ghost Indexes
     self.ghosts = self.getOpponents(gameState)
+    # Get Ghost Positions
+    self.ghostPositions = []
+    for ghost in self.ghosts:
+      self.ghostPositions.append(gameState.getAgentPosition(ghost))
+    print(self.ghostPositions)
+    # Get Distances to Ghosts
+    self.ghostDistances = []
+    for ghost in self.ghostPositions:
+      self.ghostDistances.append(self.aStarSearch(self.startPosition, ghost))
+    print(self.ghostDistances)
+    # Get Closest Ghost
+    self.closestGhost = self.ghosts[self.ghostDistances.index(min(self.ghostDistances))]
+    print(self.closestGhost)
 
-    # Initialise Food Positions and Food
-    self.foodPositions = []
-    self.food = self.getFood(gameState).asList()
+    # Initialise Food Positions
+    self.foodPositions = self.getFood(gameState).asList()
+    # Get Distances from Agent to Food
+    self.foodDistances = []
+    for food in self.foodPositions:
+      self.foodDistances.append(self.getMazeDistance(self.startPosition, food))
+    # Get Closest Food from Agent
+    self.closestFood = self.foodPositions[self.foodDistances.index(min(self.foodDistances))]
 
-    # Initialise Wall Positions and Walls
-    self.wallPositions = []
-    self.walls = gameState.getWalls().asList()
+    # Initialise Wall Positions
+    self.wallPositions = gameState.getWalls().asList()
 
     # Initialise Capsule Positions and Capsules
-    self.capsulePositions = []
-    self.capsules = self.getCapsules(gameState)
+    self.capsulePositions = self.getCapsules(gameState)
+    # Get Distances from Agent to Capsule
+    self.capsuleDistances = []
+    for capsule in self.capsulePositions:
+      self.capsuleDistances.append(self.getMazeDistance(self.start, capsule))
+    # Get Closest Capsule from Agent
+    self.closestCapsule = self.capsulePositions[self.capsuleDistances.index(min(self.capsuleDistances))]
+
+    # Get Legal Actions and Closest
+    self.legalActions = gameState.getLegalActions(self.index)
+
+    # Get Score
+    self.score = self.getScore(gameState)
 
     # Print variables
-    print("Start: ", self.start)
-    print("Ghosts: ", self.ghosts)
-    print("Food: ", self.food)
-    print("Walls: ", self.walls)
-    print("Capsules: ", self.capsules)
+    print("Start: ", self.startPosition)
+    print("Ghosts: ", self.ghostPositions)
+    print("Food: ", self.foodPositions)
+    print("Walls: ", self.wallPositions)
+    print("Capsules: ", self.capsulePositions)
+    print("Legal Actions: ", self.legalActions)
+    print("Score: ", self.score)
 
     CaptureAgent.registerInitialState(self, gameState)
   
   def chooseAction(self, gameState):
-    # TODO: Get information about the gameState
-    # Where is the closest food?
+    # Get the closest food to the agent    
+    print("Closest Food: ", self.closestFood)
+    print(self.aStarSearch(gameState, self.closestFood))
+
     # Where is the closest ghost?
+    print("Closest Ghost: ", self.closestGhost)
+    print(self.aStarSearch(gameState, self.closestGhost))
+
     # Where is the closest capsule?
-    # Once we have decided what to do, we can call aStarSearch to find the best action
-    
-    return
+    print("Closest Capsule: ", self.closestCapsule)
+    print(self.aStarSearch(gameState, self.closestCapsule))
+
+    # Is the agent scared?
+    for ghost in self.ghosts:
+      if gameState.getAgentState(ghost).scaredTimer > 0:
+        print("Scared Ghost")
+        print(self.aStarSearch(gameState, ghost))
+
+    return 0
 
 
-class DefensiveReflexAgent(CaptureAgent):
+class DefensiveReflexAgent(BaselineAgent):
   def registerInitialState(self, gameState):
     self.start = gameState.getAgentPosition(self.index)
     
@@ -118,9 +217,3 @@ class DefensiveReflexAgent(CaptureAgent):
     # 
     # Once we have decided what to do, we can call aStarSearch to find the best action
     return
-  
-  def aStarSearch():
-    # TODO: Implement aStarSearch algorithm here with manhattan distance as heuristic
-    # Return the best action in aStarSearch
-    return
-

@@ -1,0 +1,43 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "PacmanContest: Run Against Baseline Team",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/capture.py",
+            "args": [
+                "-r",
+                "myTeam",
+                "-b",
+                "baselineTeam"
+            ],
+        },
+        {
+            "name": "PacmanContest: Run Against Itself",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/capture.py",
+            "args": [
+                "-r",
+                "myTeam",
+                "-b",
+                "myTeam"
+            ]
+        },
+        {
+            "name": "PacmanContest: Run with Different Layout",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/capture.py",
+            "args": [
+                "-r",
+                "myTeam",
+                "-b",
+                "baselineTeam",
+                "-l",
+                "officeCapture"
+            ]
+        }
+    ]
+}

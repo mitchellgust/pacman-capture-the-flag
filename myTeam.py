@@ -85,10 +85,11 @@ class BaselineAgent(CaptureAgent):
       return self.cost
 
   def aStarSearch(problem, heuristic=nullHeuristic):
-    def priorityQueueFunc(node: Node): 
+    def priorityQueueFunction(node: Node): 
       # f(n) = g(n) + h(n) (priority = cost + estimatedCost)
       return node.cost + heuristic(node.state, problem)
-    priorityQueue = util.PriorityQueueWithFunction(priorityQueueFunc)
+
+    priorityQueue = util.PriorityQueueWithFunction(priorityQueueFunction)
 
     initialNode = Node(problem.getStartState(), [], 0)
     frontier = priorityQueue
@@ -128,36 +129,15 @@ class OffensiveReflexAgent(BaselineAgent):
     self.ghostPositions = []
     for ghost in self.ghosts:
       self.ghostPositions.append(gameState.getAgentPosition(ghost))
-    print(self.ghostPositions)
-    # Get Distances to Ghosts
-    self.ghostDistances = []
-    for ghost in self.ghostPositions:
-      self.ghostDistances.append(self.aStarSearch(self.startPosition, ghost))
-    print(self.ghostDistances)
-    # Get Closest Ghost
-    self.closestGhost = self.ghosts[self.ghostDistances.index(min(self.ghostDistances))]
-    print(self.closestGhost)
 
     # Initialise Food Positions
     self.foodPositions = self.getFood(gameState).asList()
-    # Get Distances from Agent to Food
-    self.foodDistances = []
-    for food in self.foodPositions:
-      self.foodDistances.append(self.getMazeDistance(self.startPosition, food))
-    # Get Closest Food from Agent
-    self.closestFood = self.foodPositions[self.foodDistances.index(min(self.foodDistances))]
 
     # Initialise Wall Positions
     self.wallPositions = gameState.getWalls().asList()
 
     # Initialise Capsule Positions and Capsules
     self.capsulePositions = self.getCapsules(gameState)
-    # Get Distances from Agent to Capsule
-    self.capsuleDistances = []
-    for capsule in self.capsulePositions:
-      self.capsuleDistances.append(self.getMazeDistance(self.start, capsule))
-    # Get Closest Capsule from Agent
-    self.closestCapsule = self.capsulePositions[self.capsuleDistances.index(min(self.capsuleDistances))]
 
     # Get Legal Actions and Closest
     self.legalActions = gameState.getLegalActions(self.index)
@@ -177,23 +157,10 @@ class OffensiveReflexAgent(BaselineAgent):
     CaptureAgent.registerInitialState(self, gameState)
   
   def chooseAction(self, gameState):
-    # Get the closest food to the agent    
-    print("Closest Food: ", self.closestFood)
-    print(self.aStarSearch(gameState, self.closestFood))
-
-    # Where is the closest ghost?
-    print("Closest Ghost: ", self.closestGhost)
-    print(self.aStarSearch(gameState, self.closestGhost))
-
-    # Where is the closest capsule?
-    print("Closest Capsule: ", self.closestCapsule)
-    print(self.aStarSearch(gameState, self.closestCapsule))
-
     # Is the agent scared?
     for ghost in self.ghosts:
       if gameState.getAgentState(ghost).scaredTimer > 0:
-        print("Scared Ghost")
-        print(self.aStarSearch(gameState, ghost))
+        print("Scared Ghost Found")
 
     return 0
 

@@ -79,8 +79,19 @@ class BaselineAgent(CaptureAgent):
 
   def registerInitialState(self, gameState: GameState):
     # For common variables
-    middle_of_map = (gameState.data.layout.width / 2, gameState.data.layout.height / 2)
+    mapWidth = gameState.data.layout.width
+    mapHeight = gameState.data.layout.height
+    midWidth = int(mapWidth / 2)
+    midHeight = int(mapHeight / 2)    
+    self.middleOfMap = (midWidth, midHeight)
     
+    entrancePositions = []
+    # if self is red team    
+    for i in range(mapHeight):
+      
+      if not gameState.hasWall(midWidth - 1, i) and not gameState.hasWall(midWidth, i):
+        entrancePositions.append((midWidth - 1, i))
+    self.entrancePositions = entrancePositions
     
   
   def aStarSearch(self, start_position, goal_position, walls, heuristic):
@@ -139,7 +150,6 @@ class OffensiveReflexAgent(BaselineAgent):
 
   def registerInitialState(self, gameState: GameState):
     super().registerInitialState(gameState)
-
     CaptureAgent.registerInitialState(self, gameState)
   
   def chooseAction(self, gameState: GameState):
@@ -175,6 +185,9 @@ class DefensiveReflexAgent(BaselineAgent):
     # was eaten? Go to that location.
     # 
     # Once we have decided what to do, we can call aStarSearch to find the best action
+    
+    # debug draw the entrances
+    self.debugDraw(self.entrancePositions, [0, 1, 0], clear=True)
     
     # Information about the gameState and current agent
     currentPosition = gameState.getAgentPosition(self.index)

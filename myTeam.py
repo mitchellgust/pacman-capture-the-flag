@@ -12,6 +12,7 @@
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 
 import random
+from capture import GameState
 from captureAgents import CaptureAgent
 from game import Actions, Directions
 import util
@@ -76,7 +77,7 @@ class Node:
       
 class BaselineAgent(CaptureAgent):
 
-  def registerInitialState(self, gameState):
+  def registerInitialState(self, gameState: GameState):
     # For common variables
     
     # Initialise Ghost Indexes
@@ -158,12 +159,12 @@ class BaselineAgent(CaptureAgent):
 
 class OffensiveReflexAgent(BaselineAgent):
 
-  def registerInitialState(self, gameState):
+  def registerInitialState(self, gameState: GameState):
     super().registerInitialState(gameState)
 
     CaptureAgent.registerInitialState(self, gameState)
   
-  def chooseAction(self, gameState):
+  def chooseAction(self, gameState: GameState):
     # Is the agent scared?
     for ghost in self.ghosts:
       if gameState.getAgentState(ghost).scaredTimer > 0:
@@ -173,7 +174,7 @@ class OffensiveReflexAgent(BaselineAgent):
 
 
 class DefensiveReflexAgent(BaselineAgent):
-  def registerInitialState(self, gameState):
+  def registerInitialState(self, gameState: GameState):
     super().registerInitialState(gameState)
     
     self.start = gameState.getAgentPosition(self.index)
@@ -187,7 +188,7 @@ class DefensiveReflexAgent(BaselineAgent):
     
     CaptureAgent.registerInitialState(self, gameState)
 
-  def chooseAction(self, gameState):
+  def chooseAction(self, gameState: GameState):
     # TODO: Get information about the gameState
     # Is the agent scared? Should we stay away from the enemy but as close as possible?
     # Are there any enemies within 5 steps of the agent? Chase them!
@@ -201,6 +202,7 @@ class DefensiveReflexAgent(BaselineAgent):
     last_state = self.getPreviousObservation()
     goal_position = self.current_target if self.current_target else self.start
     
+    # Function 1
     # Move to the closest food that was eaten my an enemy pacman from the last iteration
     if last_state: 
       last_state_foods = self.getFoodYouAreDefending(last_state).asList()
@@ -212,9 +214,19 @@ class DefensiveReflexAgent(BaselineAgent):
                             key=lambda x: self.getMazeDistance(current_position, x))
         
     # Function 2
+    # If enemy is within 5 steps, chase them
+    enemies = [gameState.getAgentState(enemy) for enemy in self.getOpponents(gameState)]
+    if enemies:
+      goal_position = min([(enemy.getPosition(), self.getMazeDistance(current_position, enemy.getPosition())) for enemy in enemies],
+                          key=lambda x: x[1])[0]
+    
+      
+    
+    
+    # Function 3
     # When Idle - Put Agent near the middle of the maze, priorititising the location to be in a conjestion of food
 
-    # Function 3
+    # Function 4
     # When Scared - Move away from the enemy pacman but stay as close as possible
     # Reset Scared
     self.scaredGhosts = []

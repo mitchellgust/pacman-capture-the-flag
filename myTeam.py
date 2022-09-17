@@ -164,6 +164,15 @@ class OffensiveReflexAgent(BaselineAgent):
 
     return 0
 
+  def rewardFunction(self, position):
+    reward = -1
+    if position in self.foodPositions:
+      reward = 5
+    if position in self.capsulePositions:
+      reward = 10
+    if position in self.ghostPositions:
+      reward = -20
+    return reward
 
 class DefensiveReflexAgent(BaselineAgent):
   def registerInitialState(self, gameState):

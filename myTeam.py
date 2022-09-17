@@ -82,21 +82,21 @@ class BaselineAgent(CaptureAgent):
     mapWidth = gameState.data.layout.width
     mapHeight = gameState.data.layout.height
     midWidth = int(mapWidth / 2)
-    midHeight = int(mapHeight / 2)    
-    self.middleOfMap = (midWidth, midHeight)
+    midHeight = int(mapHeight / 2)
     
+    isRed = self.index in gameState.getRedTeamIndices()
+    self.isRed = isRed
+    offset = -1 if isRed else 0
+    self.middleOfMap = (midWidth + offset, midHeight)
+  
     entrancePositions = []
     # if self is red team    
     for i in range(mapHeight):
-      
-      if not gameState.hasWall(midWidth - 1, i) and not gameState.hasWall(midWidth, i):
-        entrancePositions.append((midWidth - 1, i))
+      if not gameState.hasWall(midWidth + offset, i) and not gameState.hasWall(midWidth, i):
+        entrancePositions.append((midWidth + offset, i))
     self.entrancePositions = entrancePositions
     
-  
-  def aStarSearch(self, start_position, goal_position, walls, heuristic):
-    
-    def getSuccessors(state, walls):
+  def getSuccessors(self, state, walls):
       successors = []
       for action in [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.WEST]:
         x, y = state
@@ -106,6 +106,7 @@ class BaselineAgent(CaptureAgent):
           new_node = Node((nextx, nexty), action, 1)
           successors.append(new_node)
       return successors
+  def aStarSearch(self, start_position, goal_position, walls, heuristic):
       
     def priorityQueueFunction(node: Node): 
       # f(n) = g(n) + h(n) (priority = cost + estimatedCost)
@@ -137,7 +138,7 @@ class BaselineAgent(CaptureAgent):
       reached.append(state)
       
       successor: Node
-      for successor in getSuccessors(state, walls):
+      for successor in self.getSuccessors(state, walls):
           successorPath = path + [successor.path]
           successorCost = cost + successor.cost
           successorNode = Node(successor.state, successorPath, successorCost)
@@ -169,7 +170,6 @@ class DefensiveReflexAgent(BaselineAgent):
     self.start = gameState.getAgentPosition(self.index)
     self.walls = gameState.getWalls().asList()
     self.currentTarget = None
-    self.scaredGhosts = []
     
     # TODO: Initialize variables we need here:
     # positions to food, enemy pacman, capsules and the entrances of 
@@ -194,43 +194,51 @@ class DefensiveReflexAgent(BaselineAgent):
     lastState = self.getPreviousObservation()
     goalPosition = self.currentTarget if self.currentTarget else self.start
     enemyIndexes = self.getOpponents(gameState)
+    isInvestigatingFood = False
+    isChasingEnemy = False
+    
     
     # Function 1
-    # Move to the closest food that was eaten my an enemy pacman from the last iteration
+    # By default - Put Agent near the middle of the maze, priorititising the location to be in a conjestion of food
+    goalPosition = self.middleOfMap
+    
+    # Function 2
+    # If food is detected as eaten from the last observation, go to that location
     if lastState: 
       lastStateFoods = self.getFoodYouAreDefending(lastState).asList()
       currentStateFoods = self.getFoodYouAreDefending(gameState).asList()
       foodsEatenSinceLastState = [food for food in lastStateFoods if food not in currentStateFoods]
       
       if foodsEatenSinceLastState:
+        isInvestigatingFood = True
         goalPosition = min(foodsEatenSinceLastState,
                             key=lambda x: self.getMazeDistance(currentPosition, x))
         
-    # Function 2
+    # Function 3
     # If enemy is within observable range, chase them
     observableEnemyPositions = [
         gameState.getAgentPosition(enemyIndex) for enemyIndex in enemyIndexes if gameState.getAgentPosition(enemyIndex)]
     if observableEnemyPositions:
       closest_enemy = min(observableEnemyPositions,
                           key=lambda x: self.getMazeDistance(currentPosition, x))
-      goalPosition = closest_enemy
-    
-    
-    
-    # Function 3
-    # When Idle - Put Agent near the middle of the maze, priorititising the location to be in a conjestion of food
+      
+      # so we don't chase into enemy territory
+      if self.isRed:
+        if closest_enemy[0] < self.middleOfMap[0]:
+          goalPosition = closest_enemy
+          isChasingEnemy = True
+      else:
+        if closest_enemy[0] > self.middleOfMap[0]:
+          goalPosition = closest_enemy
+          isChasingEnemy = True
 
     # Function 4
-    # When Scared - Move away from the enemy pacman but stay as close as possible
-    # Reset Scared
-    self.scaredGhosts = []
-    # Get Scared Ghosts
-    for enemyIndex in enemyIndexes:
-      if gameState.getAgentState(enemyIndex).scaredTimer > 0:
-        self.scaredGhosts.append(enemyIndex)
-        # print("Scared Ghost Found")
-
- 
+    # When Scared - Move away from the enemy pacman but stay relatively close
+    if gameState.getAgentState(self.index).scaredTimer > 0:
+      if isChasingEnemy:
+        goalPosition = self.middleOfMap
+        
+  
     best_action = self.aStarSearch(
         currentPosition, goalPosition, self.walls, util.manhattanDistance)
     self.currentTarget = goalPosition   

@@ -145,6 +145,22 @@ class OffensiveReflexAgent(BaselineAgent):
     # Get Score
     self.score = self.getScore(gameState)
 
+    # Get height
+    self.height = (gameState.data.layout.height)//2
+    # Get width
+    self.width = (gameState.data.layout.width)//2
+
+    self.valueMap = []
+
+    for row in range(self.width):
+      self.valueMap.append([])
+      for column in range(self.height):
+        self.valueMap[row].append(" ")
+
+    for row in range(self.width):
+      for column in range(self.height):
+        self.valueMap[row][column] = self.rewardFunction((row, column))
+
     # Print variables
     print("Start: ", self.startPosition)
     print("Ghosts: ", self.ghostPositions)
@@ -166,6 +182,8 @@ class OffensiveReflexAgent(BaselineAgent):
 
   def rewardFunction(self, position):
     reward = -1
+    if position in self.wallPositions:
+      reward = None
     if position in self.foodPositions:
       reward = 5
     if position in self.capsulePositions:
@@ -173,6 +191,53 @@ class OffensiveReflexAgent(BaselineAgent):
     if position in self.ghostPositions:
       reward = -20
     return reward
+
+  # TODO: change reward based on how close the ghost is
+
+  def Bellman(self, position):
+    row = position[0]
+    col = position[1]
+
+
+    reward = self.rewardFunction(position)
+
+    # if reward is none, it is a wall
+    if reward is None:
+      return None
+    
+    current = self.valueMap[row][col]
+
+    # up
+    if col < self.height - 1:
+      up = self.valueMap[row][col+1]
+      if up is None:
+        up = -1
+    # down
+    if col > 0:
+      down = self.valueMap[row][col-1]
+      if down is None:
+        down = -1
+    # right
+    if row < self.width - 1:
+      right = self.valueMap[row+1][col]
+      if right is None:
+        right = -1
+    # left
+    if row > 0:
+      left = self.valueMap[row-1][col]
+      if left is None:
+        left = -1
+
+    upValue = up * 0.90 + (right + left) * 0.05
+    downValue = down * 0.90 + (right + left) * 0.05
+    rightValue = right * 0.90 + (up + down) * 0.05
+    leftValue = right * 0.90 + (up + down) * 0.05
+
+    maxAction = max([upValue, downValue, rightValue, leftValue])
+    return float(reward) + float(maxAction)
+
+
+    
 
 class DefensiveReflexAgent(BaselineAgent):
   def registerInitialState(self, gameState):

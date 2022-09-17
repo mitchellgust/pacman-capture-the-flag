@@ -12,6 +12,7 @@
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 
 import random
+from capture import GameState
 from captureAgents import CaptureAgent
 from game import Actions, Directions
 import util
@@ -76,37 +77,26 @@ class Node:
       
 class BaselineAgent(CaptureAgent):
 
-  def registerInitialState(self, gameState):
+  def registerInitialState(self, gameState: GameState):
     # For common variables
+    mapWidth = gameState.data.layout.width
+    mapHeight = gameState.data.layout.height
+    midWidth = int(mapWidth / 2)
+    midHeight = int(mapHeight / 2)
     
-    # Initialise Ghost Indexes
-    self.ghosts = self.getOpponents(gameState)
-    # Get Ghost Positions
-    self.ghostPositions = []
-    for ghost in self.ghosts:
-      self.ghostPositions.append(gameState.getAgentPosition(ghost))
-
-    # # Initialise the start position
-    # self.startPosition = gameState.getAgentPosition(self.index)
-
-    # # Initialise Food Positions
-    # self.foodPositions = self.getFood(gameState).asList()
-
-    # # Initialise Wall Positions
-    # self.wallPositions = gameState.getWalls().asList()
-
-    # # Initialise Capsule Positions and Capsules
-    # self.capsulePositions = self.getCapsules(gameState)
-
-    # # Get Legal Actions and Closest
-    # self.legalActions = gameState.getLegalActions(self.index)
-
-    # # Get Score
-    # self.score = self.getScore(gameState)
+    isRed = self.index in gameState.getRedTeamIndices()
+    self.isRed = isRed
+    offset = -1 if isRed else 0
+    self.middleOfMap = (midWidth + offset, midHeight)
   
-  def aStarSearch(self, start_position, goal_position, walls, heuristic):
+    entrancePositions = []
+    # if self is red team    
+    for i in range(mapHeight):
+      if not gameState.hasWall(midWidth + offset, i) and not gameState.hasWall(midWidth, i):
+        entrancePositions.append((midWidth + offset, i))
+    self.entrancePositions = entrancePositions
     
-    def getSuccessors(state, walls):
+  def getSuccessors(self, state, walls):
       successors = []
       for action in [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.WEST]:
         x, y = state
@@ -116,6 +106,7 @@ class BaselineAgent(CaptureAgent):
           new_node = Node((nextx, nexty), action, 1)
           successors.append(new_node)
       return successors
+  def aStarSearch(self, start_position, goal_position, walls, heuristic):
       
     def priorityQueueFunction(node: Node): 
       # f(n) = g(n) + h(n) (priority = cost + estimatedCost)
@@ -147,7 +138,7 @@ class BaselineAgent(CaptureAgent):
       reached.append(state)
       
       successor: Node
-      for successor in getSuccessors(state, walls):
+      for successor in self.getSuccessors(state, walls):
           successorPath = path + [successor.path]
           successorCost = cost + successor.cost
           successorNode = Node(successor.state, successorPath, successorCost)
@@ -158,28 +149,27 @@ class BaselineAgent(CaptureAgent):
 
 class OffensiveReflexAgent(BaselineAgent):
 
-  def registerInitialState(self, gameState):
+  def registerInitialState(self, gameState: GameState):
     super().registerInitialState(gameState)
-
     CaptureAgent.registerInitialState(self, gameState)
   
-  def chooseAction(self, gameState):
+  def chooseAction(self, gameState: GameState):
     # Is the agent scared?
-    for ghost in self.ghosts:
-      if gameState.getAgentState(ghost).scaredTimer > 0:
-        print("Scared Ghost Found")
+    for enemy in self.getOpponents(gameState):
+      if gameState.getAgentState(enemy).scaredTimer > 0:
+        # print("Scared Ghost Found")
+        pass
 
     return 'Stop'
 
 
 class DefensiveReflexAgent(BaselineAgent):
-  def registerInitialState(self, gameState):
+  def registerInitialState(self, gameState: GameState):
     super().registerInitialState(gameState)
     
     self.start = gameState.getAgentPosition(self.index)
     self.walls = gameState.getWalls().asList()
-    self.current_target = None
-    self.scaredGhosts = []
+    self.currentTarget = None
     
     # TODO: Initialize variables we need here:
     # positions to food, enemy pacman, capsules and the entrances of 
@@ -187,7 +177,7 @@ class DefensiveReflexAgent(BaselineAgent):
     
     CaptureAgent.registerInitialState(self, gameState)
 
-  def chooseAction(self, gameState):
+  def chooseAction(self, gameState: GameState):
     # TODO: Get information about the gameState
     # Is the agent scared? Should we stay away from the enemy but as close as possible?
     # Are there any enemies within 5 steps of the agent? Chase them!
@@ -196,37 +186,61 @@ class DefensiveReflexAgent(BaselineAgent):
     # 
     # Once we have decided what to do, we can call aStarSearch to find the best action
     
-    # Information about the gameState and current agent
-    current_position = gameState.getAgentPosition(self.index)
-    last_state = self.getPreviousObservation()
-    goal_position = self.current_target if self.current_target else self.start
+    # debug draw the entrances
+    self.debugDraw(self.entrancePositions, [0, 1, 0], clear=True)
     
-    # Move to the closest food that was eaten my an enemy pacman from the last iteration
-    if last_state: 
-      last_state_foods = self.getFoodYouAreDefending(last_state).asList()
-      current_state_foods = self.getFoodYouAreDefending(gameState).asList()
-      foods_eaten_since_last_state = [food for food in last_state_foods if food not in current_state_foods]
-      
-      if foods_eaten_since_last_state:
-        goal_position = min(foods_eaten_since_last_state,
-                            key=lambda x: self.getMazeDistance(current_position, x))
-        
+    # Information about the gameState and current agent
+    currentPosition = gameState.getAgentPosition(self.index)
+    lastState = self.getPreviousObservation()
+    goalPosition = self.currentTarget if self.currentTarget else self.start
+    enemyIndexes = self.getOpponents(gameState)
+    isInvestigatingFood = False
+    isChasingEnemy = False
+    
+    
+    # Function 1
+    # By default - Put Agent near the middle of the maze, priorititising the location to be in a conjestion of food
+    goalPosition = self.middleOfMap
+    
     # Function 2
-    # When Idle - Put Agent near the middle of the maze, priorititising the location to be in a conjestion of food
-
+    # If food is detected as eaten from the last observation, go to that location
+    if lastState: 
+      lastStateFoods = self.getFoodYouAreDefending(lastState).asList()
+      currentStateFoods = self.getFoodYouAreDefending(gameState).asList()
+      foodsEatenSinceLastState = [food for food in lastStateFoods if food not in currentStateFoods]
+      
+      if foodsEatenSinceLastState:
+        isInvestigatingFood = True
+        goalPosition = min(foodsEatenSinceLastState,
+                            key=lambda x: self.getMazeDistance(currentPosition, x))
+        
     # Function 3
-    # When Scared - Move away from the enemy pacman but stay as close as possible
-    # Reset Scared
-    self.scaredGhosts = []
-    # Get Scared Ghosts
-    for ghost in self.ghosts:
-      if gameState.getAgentState(ghost).scaredTimer > 0:
-        self.scaredGhosts.append(ghost)
-        print("Scared Ghost Found")
+    # If enemy is within observable range, chase them
+    observableEnemyPositions = [
+        gameState.getAgentPosition(enemyIndex) for enemyIndex in enemyIndexes if gameState.getAgentPosition(enemyIndex)]
+    if observableEnemyPositions:
+      closest_enemy = min(observableEnemyPositions,
+                          key=lambda x: self.getMazeDistance(currentPosition, x))
+      
+      # so we don't chase into enemy territory
+      if self.isRed:
+        if closest_enemy[0] < self.middleOfMap[0]:
+          goalPosition = closest_enemy
+          isChasingEnemy = True
+      else:
+        if closest_enemy[0] > self.middleOfMap[0]:
+          goalPosition = closest_enemy
+          isChasingEnemy = True
 
- 
+    # Function 4
+    # When Scared - Move away from the enemy pacman but stay relatively close
+    if gameState.getAgentState(self.index).scaredTimer > 0:
+      if isChasingEnemy:
+        goalPosition = self.middleOfMap
+        
+  
     best_action = self.aStarSearch(
-        current_position, goal_position, self.walls, util.manhattanDistance)
-    self.current_target = goal_position   
+        currentPosition, goalPosition, self.walls, util.manhattanDistance)
+    self.currentTarget = goalPosition   
     
     return best_action

@@ -79,31 +79,9 @@ class BaselineAgent(CaptureAgent):
 
   def registerInitialState(self, gameState: GameState):
     # For common variables
+    middle_of_map = (gameState.data.layout.width / 2, gameState.data.layout.height / 2)
     
-    # Initialise Ghost Indexes
-    self.ghosts = self.getOpponents(gameState)
-    # Get Ghost Positions
-    self.ghostPositions = []
-    for ghost in self.ghosts:
-      self.ghostPositions.append(gameState.getAgentPosition(ghost))
-
-    # # Initialise the start position
-    # self.startPosition = gameState.getAgentPosition(self.index)
-
-    # # Initialise Food Positions
-    # self.foodPositions = self.getFood(gameState).asList()
-
-    # # Initialise Wall Positions
-    # self.wallPositions = gameState.getWalls().asList()
-
-    # # Initialise Capsule Positions and Capsules
-    # self.capsulePositions = self.getCapsules(gameState)
-
-    # # Get Legal Actions and Closest
-    # self.legalActions = gameState.getLegalActions(self.index)
-
-    # # Get Score
-    # self.score = self.getScore(gameState)
+    
   
   def aStarSearch(self, start_position, goal_position, walls, heuristic):
     
@@ -166,9 +144,10 @@ class OffensiveReflexAgent(BaselineAgent):
   
   def chooseAction(self, gameState: GameState):
     # Is the agent scared?
-    for ghost in self.ghosts:
-      if gameState.getAgentState(ghost).scaredTimer > 0:
-        print("Scared Ghost Found")
+    for enemy in self.getOpponents(gameState):
+      if gameState.getAgentState(enemy).scaredTimer > 0:
+        # print("Scared Ghost Found")
+        pass
 
     return 'Stop'
 
@@ -179,7 +158,7 @@ class DefensiveReflexAgent(BaselineAgent):
     
     self.start = gameState.getAgentPosition(self.index)
     self.walls = gameState.getWalls().asList()
-    self.current_target = None
+    self.currentTarget = None
     self.scaredGhosts = []
     
     # TODO: Initialize variables we need here:
@@ -198,29 +177,31 @@ class DefensiveReflexAgent(BaselineAgent):
     # Once we have decided what to do, we can call aStarSearch to find the best action
     
     # Information about the gameState and current agent
-    current_position = gameState.getAgentPosition(self.index)
-    last_state = self.getPreviousObservation()
-    goal_position = self.current_target if self.current_target else self.start
+    currentPosition = gameState.getAgentPosition(self.index)
+    lastState = self.getPreviousObservation()
+    goalPosition = self.currentTarget if self.currentTarget else self.start
+    enemyIndexes = self.getOpponents(gameState)
     
     # Function 1
     # Move to the closest food that was eaten my an enemy pacman from the last iteration
-    if last_state: 
-      last_state_foods = self.getFoodYouAreDefending(last_state).asList()
-      current_state_foods = self.getFoodYouAreDefending(gameState).asList()
-      foods_eaten_since_last_state = [food for food in last_state_foods if food not in current_state_foods]
+    if lastState: 
+      lastStateFoods = self.getFoodYouAreDefending(lastState).asList()
+      currentStateFoods = self.getFoodYouAreDefending(gameState).asList()
+      foodsEatenSinceLastState = [food for food in lastStateFoods if food not in currentStateFoods]
       
-      if foods_eaten_since_last_state:
-        goal_position = min(foods_eaten_since_last_state,
-                            key=lambda x: self.getMazeDistance(current_position, x))
+      if foodsEatenSinceLastState:
+        goalPosition = min(foodsEatenSinceLastState,
+                            key=lambda x: self.getMazeDistance(currentPosition, x))
         
     # Function 2
-    # If enemy is within 5 steps, chase them
-    enemies = [gameState.getAgentState(enemy) for enemy in self.getOpponents(gameState)]
-    if enemies:
-      goal_position = min([(enemy.getPosition(), self.getMazeDistance(current_position, enemy.getPosition())) for enemy in enemies],
-                          key=lambda x: x[1])[0]
+    # If enemy is within observable range, chase them
+    observableEnemyPositions = [
+        gameState.getAgentPosition(enemyIndex) for enemyIndex in enemyIndexes if gameState.getAgentPosition(enemyIndex)]
+    if observableEnemyPositions:
+      closest_enemy = min(observableEnemyPositions,
+                          key=lambda x: self.getMazeDistance(currentPosition, x))
+      goalPosition = closest_enemy
     
-      
     
     
     # Function 3
@@ -231,14 +212,14 @@ class DefensiveReflexAgent(BaselineAgent):
     # Reset Scared
     self.scaredGhosts = []
     # Get Scared Ghosts
-    for ghost in self.ghosts:
-      if gameState.getAgentState(ghost).scaredTimer > 0:
-        self.scaredGhosts.append(ghost)
-        print("Scared Ghost Found")
+    for enemyIndex in enemyIndexes:
+      if gameState.getAgentState(enemyIndex).scaredTimer > 0:
+        self.scaredGhosts.append(enemyIndex)
+        # print("Scared Ghost Found")
 
  
     best_action = self.aStarSearch(
-        current_position, goal_position, self.walls, util.manhattanDistance)
-    self.current_target = goal_position   
+        currentPosition, goalPosition, self.walls, util.manhattanDistance)
+    self.currentTarget = goalPosition   
     
     return best_action

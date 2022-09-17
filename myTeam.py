@@ -11,14 +11,10 @@
 # Student side autograding was added by Brad Miller, Nick Hay, and
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 
-
-from lib2to3.pytree import Node
-from turtle import position
+import random
 from captureAgents import CaptureAgent
-import random, time, util
-from distanceCalculator import Distancer
-from game import Directions
-import game
+from game import Actions, Directions
+import util
 
 #################
 # Team creation #
@@ -48,7 +44,6 @@ def createTeam(firstIndex, secondIndex, isRed,
 # Agents #
 ##########
 
-
 # Common Commands:
 # 
 # Run against baseline team:
@@ -61,67 +56,28 @@ def createTeam(firstIndex, secondIndex, isRed,
 # 
 # python capture.py -r myTeam -b baselineTeam -l officeCapture
 # ---------------
+class Node:
+  def __init__(self, state, path, cost):
+    self.state = state
+    self.path = path
+    self.cost: int  = cost
 
+  @property
+  def getState(self):
+    return self.state
+
+  @property
+  def getPath(self):
+    return self.path
+
+  @property
+  def getCost(self):
+    return self.cost
+      
 class BaselineAgent(CaptureAgent):
 
-  nullHeuristic = 0
-
-  class Node:
-    def __init__(self, state, path, cost):
-      self.state = state
-      self.path = path
-      self.cost = cost
-    
-    @property
-    def getState(self):
-      return self.state
-    
-    @property
-    def getPath(self):
-      return self.path
-    
-    @property
-    def getCost(self):
-      return self.cost
-
-  def aStarSearch(problem, heuristic=nullHeuristic):
-    def priorityQueueFunction(node: Node): 
-      # f(n) = g(n) + h(n) (priority = cost + estimatedCost)
-      return node.cost + heuristic(node.state, problem)
-
-    priorityQueue = util.PriorityQueueWithFunction(priorityQueueFunction)
-
-    initialNode = Node(problem.getStartState(), [], 0)
-    frontier = priorityQueue
-    frontier.push(initialNode)
-
-    reached = []
-    while not frontier.isEmpty():
-      state, path, cost = frontier.pop()
-      
-      if problem.isGoalState(state):
-          return path
-
-      if state in reached:
-          continue
-      
-      reached.append(state)
-
-      successor: Node
-      for successor in problem.getSuccessors(state):
-          successorPath = path + [successor.path]
-          successorCost = cost + successor.cost
-          successorNode = (successor.state, successorPath, successorCost)
-          
-          frontier.push(successorNode)
-
-    return None # Failure
-
-
-class OffensiveReflexAgent(BaselineAgent):
   def registerInitialState(self, gameState):
-    # Initialise the start position
-    self.startPosition = gameState.getAgentPosition(self.index)
+    # For common variables
     
     # Initialise Ghost Indexes
     self.ghosts = self.getOpponents(gameState)
@@ -130,29 +86,80 @@ class OffensiveReflexAgent(BaselineAgent):
     for ghost in self.ghosts:
       self.ghostPositions.append(gameState.getAgentPosition(ghost))
 
-    # Initialise Food Positions
-    self.foodPositions = self.getFood(gameState).asList()
+    # # Initialise the start position
+    # self.startPosition = gameState.getAgentPosition(self.index)
 
-    # Initialise Wall Positions
-    self.wallPositions = gameState.getWalls().asList()
+    # # Initialise Food Positions
+    # self.foodPositions = self.getFood(gameState).asList()
 
-    # Initialise Capsule Positions and Capsules
-    self.capsulePositions = self.getCapsules(gameState)
+    # # Initialise Wall Positions
+    # self.wallPositions = gameState.getWalls().asList()
 
-    # Get Legal Actions and Closest
-    self.legalActions = gameState.getLegalActions(self.index)
+    # # Initialise Capsule Positions and Capsules
+    # self.capsulePositions = self.getCapsules(gameState)
 
-    # Get Score
-    self.score = self.getScore(gameState)
+    # # Get Legal Actions and Closest
+    # self.legalActions = gameState.getLegalActions(self.index)
 
-    # Print variables
-    print("Start: ", self.startPosition)
-    print("Ghosts: ", self.ghostPositions)
-    print("Food: ", self.foodPositions)
-    print("Walls: ", self.wallPositions)
-    print("Capsules: ", self.capsulePositions)
-    print("Legal Actions: ", self.legalActions)
-    print("Score: ", self.score)
+    # # Get Score
+    # self.score = self.getScore(gameState)
+  
+  def aStarSearch(self, start_position, goal_position, walls, heuristic):
+    
+    def getSuccessors(state, walls):
+      successors = []
+      for action in [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.WEST]:
+        x, y = state
+        dx, dy = Actions.directionToVector(action)
+        nextx, nexty = int(x + dx), int(y + dy)
+        if (nextx, nexty) not in walls:
+          new_node = Node((nextx, nexty), action, 1)
+          successors.append(new_node)
+      return successors
+      
+    def priorityQueueFunction(node: Node): 
+      # f(n) = g(n) + h(n) (priority = cost + estimatedCost)
+      return node.cost + heuristic(node.state, goal_position)
+
+    priorityQueue = util.PriorityQueueWithFunction(priorityQueueFunction)
+    initialNode = Node(start_position, [], 0)
+    frontier = priorityQueue
+    frontier.push(initialNode)
+
+    reached = []
+    while not frontier.isEmpty():
+      node: Node = frontier.pop()
+      
+      state = node.state
+      path = node.path
+      cost = node.cost
+
+      # State((x,y), numFood))
+      if state == goal_position:
+        if not path:
+          return 'Stop'
+        else:
+          return path[0] 
+   
+      if state in reached:
+          continue
+      
+      reached.append(state)
+      
+      successor: Node
+      for successor in getSuccessors(state, walls):
+          successorPath = path + [successor.path]
+          successorCost = cost + successor.cost
+          successorNode = Node(successor.state, successorPath, successorCost)
+          
+          frontier.push(successorNode)
+
+    return None # Failure
+
+class OffensiveReflexAgent(BaselineAgent):
+
+  def registerInitialState(self, gameState):
+    super().registerInitialState(gameState)
 
     CaptureAgent.registerInitialState(self, gameState)
   
@@ -162,12 +169,17 @@ class OffensiveReflexAgent(BaselineAgent):
       if gameState.getAgentState(ghost).scaredTimer > 0:
         print("Scared Ghost Found")
 
-    return 0
+    return 'Stop'
 
 
 class DefensiveReflexAgent(BaselineAgent):
   def registerInitialState(self, gameState):
+    super().registerInitialState(gameState)
+    
     self.start = gameState.getAgentPosition(self.index)
+    self.walls = gameState.getWalls().asList()
+    self.current_target = None
+    self.scaredGhosts = []
     
     # TODO: Initialize variables we need here:
     # positions to food, enemy pacman, capsules and the entrances of 
@@ -183,4 +195,38 @@ class DefensiveReflexAgent(BaselineAgent):
     # was eaten? Go to that location.
     # 
     # Once we have decided what to do, we can call aStarSearch to find the best action
-    return
+    
+    # Information about the gameState and current agent
+    current_position = gameState.getAgentPosition(self.index)
+    last_state = self.getPreviousObservation()
+    goal_position = self.current_target if self.current_target else self.start
+    
+    # Move to the closest food that was eaten my an enemy pacman from the last iteration
+    if last_state: 
+      last_state_foods = self.getFoodYouAreDefending(last_state).asList()
+      current_state_foods = self.getFoodYouAreDefending(gameState).asList()
+      foods_eaten_since_last_state = [food for food in last_state_foods if food not in current_state_foods]
+      
+      if foods_eaten_since_last_state:
+        goal_position = min(foods_eaten_since_last_state,
+                            key=lambda x: self.getMazeDistance(current_position, x))
+        
+    # Function 2
+    # When Idle - Put Agent near the middle of the maze, priorititising the location to be in a conjestion of food
+
+    # Function 3
+    # When Scared - Move away from the enemy pacman but stay as close as possible
+    # Reset Scared
+    self.scaredGhosts = []
+    # Get Scared Ghosts
+    for ghost in self.ghosts:
+      if gameState.getAgentState(ghost).scaredTimer > 0:
+        self.scaredGhosts.append(ghost)
+        print("Scared Ghost Found")
+
+ 
+    best_action = self.aStarSearch(
+        current_position, goal_position, self.walls, util.manhattanDistance)
+    self.current_target = goal_position   
+    
+    return best_action

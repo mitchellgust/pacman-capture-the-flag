@@ -179,17 +179,6 @@ class OffensiveReflexAgent(BaselineAgent):
     # Get width
     self.width = (gameState.data.layout.width)//2
 
-    self.valueMap = []
-
-    for row in range(self.width):
-      self.valueMap.append([])
-      for column in range(self.height):
-        self.valueMap[row].append(" ")
-
-    for row in range(self.width):
-      for column in range(self.height):
-        self.valueMap[row][column] = self.rewardFunction((row, column))
-
     # Print variables
     print("Start: ", self.startPosition)
     print("Ghosts: ", self.ghostPositions)
@@ -226,15 +215,11 @@ class OffensiveReflexAgent(BaselineAgent):
     row = position[0]
     col = position[1]
 
-
     reward = self.rewardFunction(position)
 
     # if reward is none, it is a wall
     if reward is None:
       return None
-    
-    current = self.valueMap[row][col]
-
     # up
     if col < self.height - 1:
       up = self.valueMap[row][col+1]
@@ -264,6 +249,18 @@ class OffensiveReflexAgent(BaselineAgent):
     maxAction = max([upValue, downValue, rightValue, leftValue])
     return float(reward) + float(maxAction)
 
+  def makeValueMap(self):
+    valueMap = []
+    for row in range(self.width):
+        valueMap.append([])
+        for column in range(self.height):
+          valueMap[row].append(" ")
+
+    for row in range(self.width):
+      for column in range(self.height):
+        valueMap[row][column] = self.rewardFunction((row, column))
+
+    return valueMap
 
     
 

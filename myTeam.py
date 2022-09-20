@@ -171,20 +171,20 @@ class OffensiveReflexAgent(BaselineAgent):
     # Get Legal Actions and Closest
     self.legalActions = gameState.getLegalActions(self.index)
 
+    # Get height
+    self.height = (gameState.data.layout.height)
+    # Get width
+    self.width = (gameState.data.layout.width)//2
+
     self.valueMap = []
     for row in range(self.width):
-        map.append([])
+        self.valueMap.append([])
         for col in range(self.height):
-          map[row].append(" ")
+          self.valueMap[row].append(" ")
 
     for row in range(self.width):
       for col in range(self.height):
-        map[row][col] = self.rewardFunction((row, col))
-
-    # Get height
-    self.height = (gameState.data.layout.height)//2
-    # Get width
-    self.width = (gameState.data.layout.width)//2
+        self.valueMap[row][col] = self.rewardFunction((row, col))
 
     # Print variables
     print("Start: ", self.startPosition)
@@ -193,17 +193,39 @@ class OffensiveReflexAgent(BaselineAgent):
     print("Walls: ", self.wallPositions)
     print("Capsules: ", self.capsulePositions)
     print("Legal Actions: ", self.legalActions)
-    print("Score: ", self.score)
-  
+    print("Width:", self.width)
+    print("Height:", self.height)
 
   def chooseAction(self, gameState: GameState):
-    # Is the agent scared?
-    for enemy in self.getOpponents(gameState):
-      if gameState.getAgentState(enemy).scaredTimer > 0:
-        # print("Scared Ghost Found")
-        pass
+    # # Is the agent scared?
+    # for enemy in self.getOpponents(gameState):
+    #   if gameState.getAgentState(enemy).scaredTimer > 0:
+    #     # print("Scared Ghost Found")
+    #     pass
 
-    return 'Stop'
+    # return 'Stop'
+    self.valueIteration()
+
+    # which action is best
+    row,col = gameState.getAgentPosition(self.index)
+    actionValues = {}
+    for action in self.legalActions:
+      if action is "North":
+        actionValues.update({action : self.valueMap[row][col+1]})
+      if action is "South":
+        actionValues.update({action : self.valueMap[row][col-1]})
+      if action is "East":
+        actionValues.update({action : self.valueMap[row+1][col]})
+      if action is "West":
+        actionValues.update({action : self.valueMap[row-1][col]})
+      if action is "Stop":
+        actionValues.update({action : self.valueMap[row][col]})
+
+    actionToTake = max(actionValues, key=actionValues.get)
+    return actionToTake
+
+
+    
 
 
   def rewardFunction(self, position):
@@ -227,29 +249,35 @@ class OffensiveReflexAgent(BaselineAgent):
 
     reward = self.rewardFunction(position)
 
+    up = None
+    down = None
+    left = None
+    right = None
+
     # if reward is none, it is a wall
     if reward is None:
       return None
     # up
     if col < self.height - 1:
       up = valueMap[row][col+1]
-      if up is None:
-        up = -1
     # down
     if col > 0:
       down = valueMap[row][col-1]
-      if down is None:
-        down = -1
     # right
     if row < self.width - 1:
       right = valueMap[row+1][col]
-      if right is None:
-        right = -1
     # left
     if row > 0:
       left = valueMap[row-1][col]
-      if left is None:
-        left = -1
+
+    if up is None:
+      up = -1
+    if down is None:
+      down = -1
+    if right is None:
+      right = -1
+    if left is None:
+      left = -1
 
     upValue = up * 0.90 + (right + left) * 0.05
     downValue = down * 0.90 + (right + left) * 0.05
@@ -267,6 +295,10 @@ class OffensiveReflexAgent(BaselineAgent):
       for row in range(self.width):
         for col in range(self.height):
           self.valueMap[row][col] = self.bellman(oldMap, (row, col))
+      
+      iteration = iteration - 1
+    print("iteration: ", iteration, "valueMap down: ", self.valueMap[1][1], "valueMap up: ", self.valueMap[1][3])
+      
 
     
 

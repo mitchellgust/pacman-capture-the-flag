@@ -151,22 +151,15 @@ class OffensiveReflexAgent(BaselineAgent):
   def registerInitialState(self, gameState):
     # Initialise the start position
     self.startPosition = gameState.getAgentPosition(self.index)
-    
-    # Initialise Ghost Indexes
-    self.ghosts = self.getOpponents(gameState)
-    # Get Ghost Positions
-    self.ghostPositions = []
-    for ghost in self.ghosts:
-      self.ghostPositions.append(gameState.getAgentPosition(ghost))
 
     # Initialise Food Positions
-    self.foodPositions = self.getFood(gameState).asList()
+    self.foodPositions = gameState.getBlueFood()
 
     # Initialise Wall Positions
     self.wallPositions = gameState.getWalls().asList()
 
     # Initialise Capsule Positions and Capsules
-    self.capsulePositions = self.getCapsules(gameState)
+    self.capsulePositions = gameState.getBlueCapsules()
 
     # Get Legal Actions and Closest
     self.legalActions = gameState.getLegalActions(self.index)
@@ -174,27 +167,20 @@ class OffensiveReflexAgent(BaselineAgent):
     # Get height
     self.height = (gameState.data.layout.height)
     # Get width
-    self.width = (gameState.data.layout.width)//2
+    self.width = (gameState.data.layout.width)
 
     self.valueMap = []
-    for row in range(self.width):
+    for row in range(self.height):
         self.valueMap.append([])
-        for col in range(self.height):
+        for col in range(self.width):
           self.valueMap[row].append(" ")
 
-    for row in range(self.width):
-      for col in range(self.height):
-        self.valueMap[row][col] = self.rewardFunction((row, col))
+    for row in range(self.height):
+      for col in range(self.width):
+        self.valueMap[row][col] = self.rewardFunction((col, self.height-1-row))
 
-    # Print variables
-    print("Start: ", self.startPosition)
-    print("Ghosts: ", self.ghostPositions)
-    print("Food: ", self.foodPositions)
-    print("Walls: ", self.wallPositions)
-    print("Capsules: ", self.capsulePositions)
-    print("Legal Actions: ", self.legalActions)
-    print("Width:", self.width)
-    print("Height:", self.height)
+    # for i in range(self.height):
+    #     print(self.valueMap[i])
 
   def chooseAction(self, gameState: GameState):
     # # Is the agent scared?
@@ -204,40 +190,39 @@ class OffensiveReflexAgent(BaselineAgent):
     #     pass
 
     # return 'Stop'
+    self.foodPositions = gameState.getBlueFood()
     self.valueIteration()
 
     # which action is best
-    row,col = gameState.getAgentPosition(self.index)
+    col, row = gameState.getAgentPosition(self.index)
+    row = self.height - 1 - row
+
+
+
+    self.legalActions = gameState.getLegalActions(self.index)
     actionValues = {}
+
     for action in self.legalActions:
-      if action is "North":
-        actionValues.update({action : self.valueMap[row][col+1]})
-      if action is "South":
-        actionValues.update({action : self.valueMap[row][col-1]})
-      if action is "East":
-        actionValues.update({action : self.valueMap[row+1][col]})
-      if action is "West":
+      if action == "North":
         actionValues.update({action : self.valueMap[row-1][col]})
-      if action is "Stop":
-        actionValues.update({action : self.valueMap[row][col]})
+      if action == "South":
+        actionValues.update({action : self.valueMap[row+1][col]})
+      if action == "East":
+        actionValues.update({action : self.valueMap[row][col+1]})
+      if action == "West":
+        actionValues.update({action : self.valueMap[row][col-1]})
 
     actionToTake = max(actionValues, key=actionValues.get)
+    print(actionValues)
     return actionToTake
-
-
-    
 
 
   def rewardFunction(self, position):
     reward = -1
     if position in self.wallPositions:
       reward = None
-    if position in self.foodPositions:
-      reward = 5
-    if position in self.capsulePositions:
-      reward = 10
-    if position in self.ghostPositions:
-      reward = -20
+    if self.foodPositions[position[0]][position[1]]:
+      reward = 1000
     return reward
 
   # TODO: change reward based on how close the ghost is
@@ -247,44 +232,46 @@ class OffensiveReflexAgent(BaselineAgent):
     row = position[0]
     col = position[1]
 
-    reward = self.rewardFunction(position)
+
+    reward = self.rewardFunction((col, self.height-1-row))
 
     up = None
     down = None
     left = None
     right = None
-
+  
     # if reward is none, it is a wall
     if reward is None:
       return None
+
     # up
-    if col < self.height - 1:
-      up = valueMap[row][col+1]
+    if row < self.height - 1:
+      up = valueMap[row+1][col]
     # down
-    if col > 0:
-      down = valueMap[row][col-1]
-    # right
-    if row < self.width - 1:
-      right = valueMap[row+1][col]
-    # left
     if row > 0:
-      left = valueMap[row-1][col]
+      down = valueMap[row-1][col]
+    # right
+    if col < self.width - 1:
+      right = valueMap[row][col+1]
+    # left
+    if col > 0:
+      left = valueMap[row][col-1]
 
     if up is None:
-      up = -1
+      up = 0
     if down is None:
-      down = -1
+      down = 0
     if right is None:
-      right = -1
+      right = 0
     if left is None:
-      left = -1
+      left = 0
 
     upValue = up * 0.90 + (right + left) * 0.05
     downValue = down * 0.90 + (right + left) * 0.05
     rightValue = right * 0.90 + (up + down) * 0.05
     leftValue = right * 0.90 + (up + down) * 0.05
 
-    maxAction = max([upValue, downValue, rightValue, leftValue])
+    maxAction = max([round(upValue,1), round(downValue,1), round(rightValue,1), round(leftValue,1)])
     return float(reward) + float(maxAction)
 
 
@@ -292,12 +279,11 @@ class OffensiveReflexAgent(BaselineAgent):
     iteration = 100
     while(iteration > 0):
       oldMap = self.valueMap.copy()
-      for row in range(self.width):
-        for col in range(self.height):
+      for row in range(self.height):
+        for col in range(self.width):
           self.valueMap[row][col] = self.bellman(oldMap, (row, col))
       
       iteration = iteration - 1
-    print("iteration: ", iteration, "valueMap down: ", self.valueMap[1][1], "valueMap up: ", self.valueMap[1][3])
       
 
     

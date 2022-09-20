@@ -74,7 +74,8 @@ class Node:
   @property
   def getCost(self):
     return self.cost
-      
+
+
 class BaselineAgent(CaptureAgent):
 
   def registerInitialState(self, gameState: GameState):
@@ -147,27 +148,27 @@ class BaselineAgent(CaptureAgent):
 
     return None # Failure
 
+
 class OffensiveReflexAgent(BaselineAgent):
   def registerInitialState(self, gameState):
-    # Initialise the start position
+    self.isRed = self.index in gameState.getRedTeamIndices()
     self.startPosition = gameState.getAgentPosition(self.index)
-
-    # Initialise Food Positions
-    self.foodPositions = gameState.getBlueFood()
-
-    # Initialise Wall Positions
     self.wallPositions = gameState.getWalls().asList()
-
-    # Initialise Capsule Positions and Capsules
     self.capsulePositions = gameState.getBlueCapsules()
-
-    # Get Legal Actions and Closest
     self.legalActions = gameState.getLegalActions(self.index)
-
-    # Get height
     self.height = (gameState.data.layout.height)
-    # Get width
     self.width = (gameState.data.layout.width)
+
+    if(self.isRed):
+      self.enemies = gameState.getBlueTeamIndices()
+      self.foodPositions = gameState.getBlueFood()
+    else:
+      self.enemies = gameState.getRedTeamIndices()
+      self.foodPositions = gameState.getRedFood()
+
+    self.enemyPositions = []
+    for enemy in self.enemies:
+      self.enemyPositions.append(gameState.getAgentPosition(enemy))
 
     self.valueMap = []
     for row in range(self.height):
@@ -179,25 +180,21 @@ class OffensiveReflexAgent(BaselineAgent):
       for col in range(self.width):
         self.valueMap[row][col] = self.rewardFunction((col, self.height-1-row))
 
-    # for i in range(self.height):
-    #     print(self.valueMap[i])
 
-  def chooseAction(self, gameState: GameState):
-    # # Is the agent scared?
-    # for enemy in self.getOpponents(gameState):
-    #   if gameState.getAgentState(enemy).scaredTimer > 0:
-    #     # print("Scared Ghost Found")
-    #     pass
-
-    # return 'Stop'
-    self.foodPositions = gameState.getBlueFood()
+  def chooseAction(self, gameState : GameState):
+    self.enemyPositions = []
+    for enemy in self.enemies:
+      self.enemyPositions.append(gameState.getAgentPosition(enemy))
+    if self.isRed:
+      self.foodPositions = gameState.getBlueFood()
+    else:
+      self.foodPositions = gameState.getRedFood()
+    
     self.valueIteration()
 
     # which action is best
     col, row = gameState.getAgentPosition(self.index)
     row = self.height - 1 - row
-
-
 
     self.legalActions = gameState.getLegalActions(self.index)
     actionValues = {}
@@ -214,6 +211,7 @@ class OffensiveReflexAgent(BaselineAgent):
 
     actionToTake = max(actionValues, key=actionValues.get)
     print(actionValues)
+
     return actionToTake
 
 
@@ -222,13 +220,15 @@ class OffensiveReflexAgent(BaselineAgent):
     if position in self.wallPositions:
       reward = None
     if self.foodPositions[position[0]][position[1]]:
-      reward = 1000
+      reward = 50
+    if position in self.enemyPositions:
+      reward = -100
     return reward
 
   # TODO: change reward based on how close the ghost is
 
 
-  def bellman(self, valueMap, position):
+  def bellman(self, map, position):
     row = position[0]
     col = position[1]
 
@@ -246,16 +246,16 @@ class OffensiveReflexAgent(BaselineAgent):
 
     # up
     if row < self.height - 1:
-      up = valueMap[row+1][col]
+      up = map[row+1][col]
     # down
     if row > 0:
-      down = valueMap[row-1][col]
+      down = map[row-1][col]
     # right
     if col < self.width - 1:
-      right = valueMap[row][col+1]
+      right = map[row][col+1]
     # left
     if col > 0:
-      left = valueMap[row][col-1]
+      left = map[row][col-1]
 
     if up is None:
       up = 0
@@ -284,9 +284,7 @@ class OffensiveReflexAgent(BaselineAgent):
           self.valueMap[row][col] = self.bellman(oldMap, (row, col))
       
       iteration = iteration - 1
-      
 
-    
 
 class DefensiveReflexAgent(BaselineAgent):
   def registerInitialState(self, gameState: GameState):

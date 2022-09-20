@@ -171,8 +171,15 @@ class OffensiveReflexAgent(BaselineAgent):
     # Get Legal Actions and Closest
     self.legalActions = gameState.getLegalActions(self.index)
 
-    # Get Score
-    self.score = self.getScore(gameState)
+    self.valueMap = []
+    for row in range(self.width):
+        map.append([])
+        for col in range(self.height):
+          map[row].append(" ")
+
+    for row in range(self.width):
+      for col in range(self.height):
+        map[row][col] = self.rewardFunction((row, col))
 
     # Get height
     self.height = (gameState.data.layout.height)//2
@@ -188,6 +195,7 @@ class OffensiveReflexAgent(BaselineAgent):
     print("Legal Actions: ", self.legalActions)
     print("Score: ", self.score)
   
+
   def chooseAction(self, gameState: GameState):
     # Is the agent scared?
     for enemy in self.getOpponents(gameState):
@@ -196,6 +204,7 @@ class OffensiveReflexAgent(BaselineAgent):
         pass
 
     return 'Stop'
+
 
   def rewardFunction(self, position):
     reward = -1
@@ -211,7 +220,8 @@ class OffensiveReflexAgent(BaselineAgent):
 
   # TODO: change reward based on how close the ghost is
 
-  def Bellman(self, position):
+
+  def bellman(self, valueMap, position):
     row = position[0]
     col = position[1]
 
@@ -222,22 +232,22 @@ class OffensiveReflexAgent(BaselineAgent):
       return None
     # up
     if col < self.height - 1:
-      up = self.valueMap[row][col+1]
+      up = valueMap[row][col+1]
       if up is None:
         up = -1
     # down
     if col > 0:
-      down = self.valueMap[row][col-1]
+      down = valueMap[row][col-1]
       if down is None:
         down = -1
     # right
     if row < self.width - 1:
-      right = self.valueMap[row+1][col]
+      right = valueMap[row+1][col]
       if right is None:
         right = -1
     # left
     if row > 0:
-      left = self.valueMap[row-1][col]
+      left = valueMap[row-1][col]
       if left is None:
         left = -1
 
@@ -249,18 +259,14 @@ class OffensiveReflexAgent(BaselineAgent):
     maxAction = max([upValue, downValue, rightValue, leftValue])
     return float(reward) + float(maxAction)
 
-  def makeValueMap(self):
-    valueMap = []
-    for row in range(self.width):
-        valueMap.append([])
-        for column in range(self.height):
-          valueMap[row].append(" ")
 
-    for row in range(self.width):
-      for column in range(self.height):
-        valueMap[row][column] = self.rewardFunction((row, column))
-
-    return valueMap
+  def valueIteration(self):
+    iteration = 100
+    while(iteration > 0):
+      oldMap = self.valueMap.copy()
+      for row in range(self.width):
+        for col in range(self.height):
+          self.valueMap[row][col] = self.bellman(oldMap, (row, col))
 
     
 

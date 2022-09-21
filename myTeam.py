@@ -87,14 +87,21 @@ class BaselineAgent(CaptureAgent):
     isRed = self.index in gameState.getRedTeamIndices()
     self.isRed = isRed
     offset = -1 if isRed else 0
-    self.middleOfMap = (midWidth + offset, midHeight)
   
     entrancePositions = []
-    # if self is red team    
-    for i in range(mapHeight):
-      if not gameState.hasWall(midWidth + offset, i) and not gameState.hasWall(midWidth, i):
-        entrancePositions.append((midWidth + offset, i))
+    middleOfMap = (midWidth + offset, midHeight)
+    if gameState.hasWall(middleOfMap[0], middleOfMap[1]):
+      candidates = []
+      for i in range(mapHeight):
+        if not gameState.hasWall(midWidth + offset, i) and not gameState.hasWall(midWidth, i):
+          entrancePositions.append((midWidth + offset, i))
+
+        if not gameState.hasWall(middleOfMap[0], i):
+          candidates.append((middleOfMap[0], i))
+      middleOfMap = min(candidates, key=lambda x: abs(x[1] - midHeight))
+
     self.entrancePositions = entrancePositions
+    self.middleOfMap = middleOfMap
     
   def getSuccessors(self, state, walls):
       successors = []
@@ -251,6 +258,8 @@ class DefensiveReflexAgent(BaselineAgent):
         currentPosition, goalPosition, self.walls, util.manhattanDistance)
     self.currentTarget = goalPosition   
 
+    print(currentPosition)
+    print(goalPosition)
     print(best_action)
     
     return best_action

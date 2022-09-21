@@ -262,13 +262,14 @@ class OffensiveReflexAgent(BaselineAgent):
 
     # Get NEW Current Food Positions
     self.foodPositions = self.getFoodYouAreOffending(gameState).asList()
-    self.capsulePositions = self.getCapsulesYouAreOffending(gameState).asList()
+    self.capsulePositions = self.getCapsulesYouAreOffending(gameState)
 
     # Get NEW Current Enemy Positions and Scared Enemy Positions
-    if gameState.getAgentState(enemy).scaredTimer > 0:
-      self.scaredEnemyPosition.append(gameState.getAgentPosition(enemy))
-    else:
-      self.enemyPositions.append(gameState.getAgentPosition(enemy))
+    for enemy in self.enemies:
+      if gameState.getAgentState(enemy).scaredTimer > 0:
+        self.scaredEnemyPosition.append(gameState.getAgentPosition(enemy))
+      else:
+        self.enemyPositions.append(gameState.getAgentPosition(enemy))
     
     self.valueIteration()
 
@@ -446,4 +447,5 @@ class DefensiveReflexAgent(BaselineAgent):
         currentPosition, goalPosition, self.wallPositions, util.manhattanDistance)
     self.currentTarget = goalPosition   
     
-    return best_action
+    # return best_action
+    return Directions.STOP

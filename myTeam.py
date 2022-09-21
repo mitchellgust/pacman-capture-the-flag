@@ -228,8 +228,12 @@ class OffensiveReflexAgent(BaselineAgent):
 
     # Get INITIAL Enemy Positions
     self.enemyPositions = []
+    self.scaredEnemyPosition = []
     for enemy in self.enemies:
-      self.enemyPositions.append(gameState.getAgentPosition(enemy))
+      if gameState.getAgentState(enemy).scaredTimer > 0:
+        self.scaredEnemyPosition.append(gameState.getAgentPosition(enemy))
+      else:
+        self.enemyPositions.append(gameState.getAgentPosition(enemy))
 
     self.valueMap = ValueMap(self.mapHeight, self.mapWidth)
 
@@ -246,14 +250,25 @@ class OffensiveReflexAgent(BaselineAgent):
     else:
       return gameState.getRedFood()
 
+  def getCapsulesYouAreOffending(self, gameState):
+    if self.isRed:
+      return gameState.getBlueCapsules()
+    else:
+      return gameState.getRedCapsules()
+
   def chooseAction(self, gameState : GameState):
-    # Get NEW Current Enemy Positions
     self.enemyPositions = []
-    for enemy in self.enemies:
-      self.enemyPositions.append(gameState.getAgentPosition(enemy))
+    self.scaredEnemyPosition = []
 
     # Get NEW Current Food Positions
     self.foodPositions = self.getFoodYouAreOffending(gameState).asList()
+    self.capsulePositions = self.getCapsulesYouAreOffending(gameState).asList()
+
+    # Get NEW Current Enemy Positions and Scared Enemy Positions
+    if gameState.getAgentState(enemy).scaredTimer > 0:
+      self.scaredEnemyPosition.append(gameState.getAgentPosition(enemy))
+    else:
+      self.enemyPositions.append(gameState.getAgentPosition(enemy))
     
     self.valueIteration()
 
@@ -292,10 +307,13 @@ class OffensiveReflexAgent(BaselineAgent):
     if position in self.foodPositions:
         reward = 50
     if position in self.enemyPositions:
-      reward = -100
+      reward = -5000
+    if position in self.capsulePositions:
+      reward = 500
+    if position in self.scaredEnemyPosition:
+      reward = 500
     return reward
-
-  # TODO: change reward based on how close the ghost is
+    
 
 
   def bellman(self, map: ValueMap, position):
@@ -321,13 +339,13 @@ class OffensiveReflexAgent(BaselineAgent):
       left = map.getWest(row, column)
 
     if up is None:
-      up = 0
+      up = -1
     if down is None:
-      down = 0
+      down = -1
     if right is None:
-      right = 0
+      right = -1
     if left is None:
-      left = 0      
+      left = -1
 
     upValue = up * 0.90 + (right + left) * 0.05
     downValue = down * 0.90 + (right + left) * 0.05

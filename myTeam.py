@@ -147,7 +147,6 @@ class BaselineAgent(CaptureAgent):
   def registerInitialState(self, gameState: GameState):
     # Common Variables that are Constant
     self.wallPositions = gameState.getWalls().asList()
-    self.enemies = self.getOpponents(gameState)
 
     self.mapWidth = gameState.data.layout.width
     self.mapHeight = gameState.data.layout.height
@@ -221,7 +220,7 @@ class OffensiveReflexAgent(BaselineAgent):
     super().registerInitialState(gameState)
     # Get CONSTANT variables
     self.currentPosition = gameState.getAgentPosition(self.index)
-    self.capsulePositions = gameState.getBlueCapsules()
+    self.capsulePositions = self.getCapsulesYouAreOffending(gameState)
 
     # Get INITIAL Food Positions
     self.foodPositions = self.getFoodYouAreOffending(gameState).asList()
@@ -229,6 +228,8 @@ class OffensiveReflexAgent(BaselineAgent):
     # Get INITIAL Enemy Positions
     self.enemyPositions = []
     self.scaredEnemyPosition = []
+    self.enemies = self.getEnemiesYouAreOffending(gameState)
+    print(self.enemies)
     for enemy in self.enemies:
       if gameState.getAgentState(enemy).scaredTimer > 0:
         self.scaredEnemyPosition.append(gameState.getAgentPosition(enemy))
@@ -242,8 +243,6 @@ class OffensiveReflexAgent(BaselineAgent):
         self.valueMap[row][column] = OffensiveReflexAgent.rewardFunction(self, 
           self.valueMap.translateCoordinate(row, column))
 
-    self.valueMap.printValueMap()
-
   def getFoodYouAreOffending(self, gameState):
     if self.isRed:
       return gameState.getBlueFood()
@@ -255,6 +254,12 @@ class OffensiveReflexAgent(BaselineAgent):
       return gameState.getBlueCapsules()
     else:
       return gameState.getRedCapsules()
+  
+  def getEnemiesYouAreOffending(self, gameState):
+    if self.isRed:
+      return gameState.getBlueTeamIndices()
+    else:
+      return gameState.getRedTeamIndices()
 
   def chooseAction(self, gameState : GameState):
     self.enemyPositions = []
@@ -265,6 +270,8 @@ class OffensiveReflexAgent(BaselineAgent):
     self.capsulePositions = self.getCapsulesYouAreOffending(gameState)
 
     # Get NEW Current Enemy Positions and Scared Enemy Positions
+    self.enemies = self.getEnemiesYouAreOffending(gameState)
+
     for enemy in self.enemies:
       if gameState.getAgentState(enemy).scaredTimer > 0:
         self.scaredEnemyPosition.append(gameState.getAgentPosition(enemy))
@@ -293,8 +300,9 @@ class OffensiveReflexAgent(BaselineAgent):
 
     actionToTake = max(actionValues, key=actionValues.get)
     print(actionValues)
+    print(actionToTake)
 
-    self.valueMap.printValueMap()
+    # self.valueMap.printValueMap()
 
     return actionToTake
 
@@ -314,8 +322,6 @@ class OffensiveReflexAgent(BaselineAgent):
     if position in self.scaredEnemyPosition:
       reward = 500
     return reward
-    
-
 
   def bellman(self, map: ValueMap, position):
     row, column = position
@@ -392,60 +398,60 @@ class DefensiveReflexAgent(BaselineAgent):
     # Once we have decided what to do, we can call aStarSearch to find the best action
     
     # debug draw the entrances
-    self.debugDraw(self.entrancePositions, [0, 1, 0], clear=True)
+    # self.debugDraw(self.entrancePositions, [0, 1, 0], clear=True)
     
-    # Information about the gameState and current agent
-    currentPosition = gameState.getAgentPosition(self.index)
-    lastState = self.getPreviousObservation()
-    goalPosition = self.currentTarget if self.currentTarget else self.currentPosition
-    isInvestigatingFood = False
-    isChasingEnemy = False
+    # # Information about the gameState and current agent
+    # currentPosition = gameState.getAgentPosition(self.index)
+    # lastState = self.getPreviousObservation()
+    # goalPosition = self.currentTarget if self.currentTarget else self.currentPosition
+    # isInvestigatingFood = False
+    # isChasingEnemy = False
     
     
-    # Function 1
-    # By default - Put Agent near the middle of the maze, priorititising the location to be in a conjestion of food
-    goalPosition = self.middleOfMap
+    # # Function 1
+    # # By default - Put Agent near the middle of the maze, priorititising the location to be in a conjestion of food
+    # goalPosition = self.middleOfMap
     
-    # Function 2
-    # If food is detected as eaten from the last observation, go to that location
-    if lastState: 
-      lastStateFoods = self.getFoodYouAreDefending(lastState).asList()
-      currentStateFoods = self.getFoodYouAreDefending(gameState).asList()
-      foodsEatenSinceLastState = [food for food in lastStateFoods if food not in currentStateFoods]
+    # # Function 2
+    # # If food is detected as eaten from the last observation, go to that location
+    # if lastState: 
+    #   lastStateFoods = self.getFoodYouAreDefending(lastState).asList()
+    #   currentStateFoods = self.getFoodYouAreDefending(gameState).asList()
+    #   foodsEatenSinceLastState = [food for food in lastStateFoods if food not in currentStateFoods]
       
-      if foodsEatenSinceLastState:
-        isInvestigatingFood = True
-        goalPosition = min(foodsEatenSinceLastState,
-                            key=lambda x: self.getMazeDistance(currentPosition, x))
+    #   if foodsEatenSinceLastState:
+    #     isInvestigatingFood = True
+    #     goalPosition = min(foodsEatenSinceLastState,
+    #                         key=lambda x: self.getMazeDistance(currentPosition, x))
         
-    # Function 3
-    # If enemy is within observable range, chase them
-    observableEnemyPositions = [
-        gameState.getAgentPosition(enemyIndex) for enemyIndex in self.enemies if gameState.getAgentPosition(enemyIndex)]
-    if observableEnemyPositions:
-      closest_enemy = min(observableEnemyPositions,
-                          key=lambda x: self.getMazeDistance(currentPosition, x))
+    # # Function 3
+    # # If enemy is within observable range, chase them
+    # observableEnemyPositions = [
+    #     gameState.getAgentPosition(enemyIndex) for enemyIndex in self.enemies if gameState.getAgentPosition(enemyIndex)]
+    # if observableEnemyPositions:
+    #   closest_enemy = min(observableEnemyPositions,
+    #                       key=lambda x: self.getMazeDistance(currentPosition, x))
       
-      # so we don't chase into enemy territory
-      if self.isRed:
-        if closest_enemy[0] < self.middleOfMap[0]:
-          goalPosition = closest_enemy
-          isChasingEnemy = True
-      else:
-        if closest_enemy[0] > self.middleOfMap[0]:
-          goalPosition = closest_enemy
-          isChasingEnemy = True
+    #   # so we don't chase into enemy territory
+    #   if self.isRed:
+    #     if closest_enemy[0] < self.middleOfMap[0]:
+    #       goalPosition = closest_enemy
+    #       isChasingEnemy = True
+    #   else:
+    #     if closest_enemy[0] > self.middleOfMap[0]:
+    #       goalPosition = closest_enemy
+    #       isChasingEnemy = True
 
-    # Function 4
-    # When Scared - Move away from the enemy pacman but stay relatively close
-    if gameState.getAgentState(self.index).scaredTimer > 0:
-      if isChasingEnemy:
-        goalPosition = self.middleOfMap
+    # # Function 4
+    # # When Scared - Move away from the enemy pacman but stay relatively close
+    # if gameState.getAgentState(self.index).scaredTimer > 0:
+    #   if isChasingEnemy:
+    #     goalPosition = self.middleOfMap
         
   
-    best_action = self.aStarSearch(
-        currentPosition, goalPosition, self.wallPositions, util.manhattanDistance)
-    self.currentTarget = goalPosition   
+    # best_action = self.aStarSearch(
+    #     currentPosition, goalPosition, self.wallPositions, util.manhattanDistance)
+    # self.currentTarget = goalPosition   
     
     # return best_action
     return Directions.STOP

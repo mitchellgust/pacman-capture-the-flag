@@ -176,7 +176,7 @@ class OffensiveReflexAgent(BaselineAgent):
       else:
         self.enemyPositions.append(gameState.getAgentPosition(enemy))
     
-    print(self.enemyPositions)
+    
 
     self.valueMap = []
     for row in range(self.height):
@@ -265,10 +265,10 @@ class OffensiveReflexAgent(BaselineAgent):
 
     # up
     if row < self.height - 1:
-      up = map[row+1][col]
+      up = map[row-1][col]
     # down
     if row > 0:
-      down = map[row-1][col]
+      down = map[row+1][col]
     # right
     if col < self.width - 1:
       right = map[row][col+1]

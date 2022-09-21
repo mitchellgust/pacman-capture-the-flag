@@ -151,10 +151,10 @@ class BaselineAgent(CaptureAgent):
 
 class OffensiveReflexAgent(BaselineAgent):
   def registerInitialState(self, gameState):
-    self.isRed = self.index in gameState.getRedTeamIndices()
+    super().registerInitialState(gameState)
+    CaptureAgent.registerInitialState(self, gameState)
     self.startPosition = gameState.getAgentPosition(self.index)
     self.wallPositions = gameState.getWalls().asList()
-    self.capsulePositions = gameState.getBlueCapsules()
     self.legalActions = gameState.getLegalActions(self.index)
     self.height = (gameState.data.layout.height)
     self.width = (gameState.data.layout.width)
@@ -162,13 +162,21 @@ class OffensiveReflexAgent(BaselineAgent):
     if(self.isRed):
       self.enemies = gameState.getBlueTeamIndices()
       self.foodPositions = gameState.getBlueFood()
+      self.capsulePositions = gameState.getBlueCapsules()
     else:
       self.enemies = gameState.getRedTeamIndices()
       self.foodPositions = gameState.getRedFood()
+      self.capsulePositions = gameState.getRedCapsules()
 
     self.enemyPositions = []
+    self.scaredEnemyPosition = []
     for enemy in self.enemies:
-      self.enemyPositions.append(gameState.getAgentPosition(enemy))
+      if gameState.getAgentState(enemy).scaredTimer > 0:
+        self.scaredEnemyPosition.append(gameState.getAgentPosition(enemy))
+      else:
+        self.enemyPositions.append(gameState.getAgentPosition(enemy))
+    
+    print(self.enemyPositions)
 
     self.valueMap = []
     for row in range(self.height):
@@ -183,12 +191,20 @@ class OffensiveReflexAgent(BaselineAgent):
 
   def chooseAction(self, gameState : GameState):
     self.enemyPositions = []
+    self.scaredEnemyPosition = []
     for enemy in self.enemies:
-      self.enemyPositions.append(gameState.getAgentPosition(enemy))
+      if gameState.getAgentState(enemy).scaredTimer > 0:
+        self.scaredEnemyPosition.append(gameState.getAgentPosition(enemy))
+      else:
+        self.enemyPositions.append(gameState.getAgentPosition(enemy))
+
+      
     if self.isRed:
       self.foodPositions = gameState.getBlueFood()
+      self.capsulePositions = gameState.getBlueCapsules()
     else:
       self.foodPositions = gameState.getRedFood()
+      self.capsulePositions = gameState.getRedCapsules()
     
     self.valueIteration()
 
@@ -222,10 +238,13 @@ class OffensiveReflexAgent(BaselineAgent):
     if self.foodPositions[position[0]][position[1]]:
       reward = 50
     if position in self.enemyPositions:
-      reward = -100
+      reward = -5000
+    if position in self.capsulePositions:
+      reward = 500
+    if position in self.scaredEnemyPosition:
+      reward = 500
     return reward
-
-  # TODO: change reward based on how close the ghost is
+    
 
 
   def bellman(self, map, position):
@@ -258,13 +277,13 @@ class OffensiveReflexAgent(BaselineAgent):
       left = map[row][col-1]
 
     if up is None:
-      up = 0
+      up = -1
     if down is None:
-      down = 0
+      down = -1
     if right is None:
-      right = 0
+      right = -1
     if left is None:
-      left = 0
+      left = -1
 
     upValue = up * 0.90 + (right + left) * 0.05
     downValue = down * 0.90 + (right + left) * 0.05

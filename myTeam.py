@@ -200,6 +200,7 @@ class DefensiveReflexAgent(BaselineAgent):
     
     # Function 1
     # By default - Put Agent near the middle of the maze, priorititising the location to be in a conjestion of food
+    # TODO: UNCOMMENT THIS TO GET EXAMPLE OF PACMAN EATING A CAPSULE
     goalPosition = self.middleOfMap
     
     # Function 2
@@ -236,11 +237,20 @@ class DefensiveReflexAgent(BaselineAgent):
     # When Scared - Move away from the enemy pacman but stay relatively close
     if gameState.getAgentState(self.index).scaredTimer > 0:
       if isChasingEnemy:
-        goalPosition = self.middleOfMap
+        closestEnemyPosition = goalPosition
+        firstSuccessorsOfEnemy = self.getSuccessors(closestEnemyPosition, self.walls)
+        secondSuccessorsOfEnemy = [successor for first_successor in firstSuccessorsOfEnemy for successor in self.getSuccessors(first_successor.state, self.walls)]
+        thirdSuccessorsOfEnemy = [successor for second_successor in secondSuccessorsOfEnemy for successor in self.getSuccessors(second_successor.state, self.walls)]
+        successors3AwayFromEnemy = [successor.state for successor in thirdSuccessorsOfEnemy if self.getMazeDistance(successor.state, closestEnemyPosition) == 3]
+        # self.debugDraw(successors3AwayFromEnemy, [1, 0, 0], clear=False)
+        successorClosestToCurrentPosition = min(successors3AwayFromEnemy, key=lambda x: self.getMazeDistance(currentPosition, x), default=self.middleOfMap)
+        goalPosition = successorClosestToCurrentPosition
         
   
     best_action = self.aStarSearch(
         currentPosition, goalPosition, self.walls, util.manhattanDistance)
     self.currentTarget = goalPosition   
+
+    print(best_action)
     
     return best_action

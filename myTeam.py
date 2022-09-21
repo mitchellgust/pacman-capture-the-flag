@@ -199,7 +199,7 @@ class DefensiveReflexAgent(BaselineAgent):
     # Information about the gameState and current agent
     currentPosition = gameState.getAgentPosition(self.index)
     lastState = self.getPreviousObservation()
-    goalPosition = self.currentTarget if self.currentTarget else self.start
+    goalPosition = self.currentTarget if self.currentTarget else self.middleOfMap 
     enemyIndexes = self.getOpponents(gameState)
     isInvestigatingFood = False
     isChasingEnemy = False
@@ -208,7 +208,8 @@ class DefensiveReflexAgent(BaselineAgent):
     # Function 1
     # By default - Put Agent near the middle of the maze, priorititising the location to be in a conjestion of food
     # TODO: UNCOMMENT THIS TO GET EXAMPLE OF PACMAN EATING A CAPSULE
-    goalPosition = self.middleOfMap
+    if currentPosition == goalPosition:
+      goalPosition = self.middleOfMap 
     
     # Function 2
     # If food is detected as eaten from the last observation, go to that location
@@ -257,9 +258,5 @@ class DefensiveReflexAgent(BaselineAgent):
     best_action = self.aStarSearch(
         currentPosition, goalPosition, self.walls, util.manhattanDistance)
     self.currentTarget = goalPosition   
-
-    print(currentPosition)
-    print(goalPosition)
-    print(best_action)
     
     return best_action

@@ -11,6 +11,7 @@
 # Student side autograding was added by Brad Miller, Nick Hay, and
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 
+from array import array
 import random
 from capture import GameState
 from captureAgents import CaptureAgent
@@ -74,38 +75,99 @@ class Node:
   @property
   def getCost(self):
     return self.cost
-      
-class BaselineAgent(CaptureAgent):
 
-  def registerInitialState(self, gameState: GameState):
-    # For common variables
-    mapWidth = gameState.data.layout.width
-    mapHeight = gameState.data.layout.height
-    midWidth = int(mapWidth / 2)
-    midHeight = int(mapHeight / 2)
-    
-    isRed = self.index in gameState.getRedTeamIndices()
-    self.isRed = isRed
-    offset = -1 if isRed else 0
+class ValueMap:
+  rows: int
+  columns: int
+  valueMap: list
+
+  def __init__(self, rows, columns):
+    self.rows = rows
+    self.columns = columns
+    self.valueMap = self.initialise2DArray(rows, columns)
+
+  def initialise2DArray(self, rows, columns):
+    # initialise 2d array
+    valueMap = []
+    for row in range(rows):
+      valueMap.append([])
+      for column in range(columns):
+        valueMap[row].append(" ")
+
+    return valueMap
   
+  def translateCoordinate(self, row, column):
+    return (column, self.rows - 1 - row)
+    
+  def printValueMap(self):
+    for i in range(self.rows):
+      for j in range(self.columns):
+        if self.valueMap[i][j] is None:
+          print("WA", end=" ")
+        else:
+          print(self.valueMap[i][j], end=" ")
+      print()
+
+  def getNorth(self, row, column):
+    return self.valueMap[row - 1][column]
+  
+  def getSouth(self, row, column):
+    return self.valueMap[row + 1][column]
+
+  def getEast(self, row, column):
+    return self.valueMap[row][column + 1]
+
+  def getWest(self, row, column):
+    return self.valueMap[row][column - 1]
+
+  @property
+  def getRows(self):
+    return self.rows
+
+  @property
+  def getColumns(self):
+    return self.columns
+
+  @property
+  def getValueMap(self):
+    return self.valueMap
+  
+  def __getitem__(self, key):
+    return self.valueMap[key]
+  
+  def __setitem__(self, key, value):
+    self.valueMap[key] = value
+
+RED_TEAM_OFFSET = -1
+BLUE_TEAM_OFFSET = 0
+ALL_ACTIONS = [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.WEST, Directions.STOP]
+STOP_ACTION = Directions.STOP
+
+class BaselineAgent(CaptureAgent):
+  def registerInitialState(self, gameState: GameState):
+    # Common Variables that are Constant
+    self.wallPositions = gameState.getWalls().asList()
+
+    self.mapWidth = gameState.data.layout.width
+    self.mapHeight = gameState.data.layout.height
+    midWidth = int(self.mapWidth / 2)
+    midHeight = int(self.mapHeight / 2)
+    
+    # Calculate Middle of Map Depending on Team
+    self.isRed = self.index in gameState.getRedTeamIndices()
+    offset = RED_TEAM_OFFSET if self.isRed else BLUE_TEAM_OFFSET
+    self.middleOfMap = (midWidth + offset, midHeight)
+
+    # Calculate Entrance Positions
     entrancePositions = []
-    middleOfMap = (midWidth + offset, midHeight)
-    if gameState.hasWall(middleOfMap[0], middleOfMap[1]):
-      candidates = []
-      for i in range(mapHeight):
-        if not gameState.hasWall(midWidth + offset, i) and not gameState.hasWall(midWidth, i):
-          entrancePositions.append((midWidth + offset, i))
-
-        if not gameState.hasWall(middleOfMap[0], i):
-          candidates.append((middleOfMap[0], i))
-      middleOfMap = min(candidates, key=lambda x: abs(x[1] - midHeight))
-
+    for i in range(self.mapHeight):
+      if not gameState.hasWall(midWidth + offset, i) and not gameState.hasWall(midWidth, i):
+        entrancePositions.append((midWidth + offset, i))
     self.entrancePositions = entrancePositions
-    self.middleOfMap = middleOfMap
     
   def getSuccessors(self, state, walls):
       successors = []
-      for action in [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.WEST]:
+      for action in ALL_ACTIONS: # Includes Stop Action
         x, y = state
         dx, dy = Actions.directionToVector(action)
         nextx, nexty = int(x + dx), int(y + dy)
@@ -113,8 +175,8 @@ class BaselineAgent(CaptureAgent):
           new_node = Node((nextx, nexty), action, 1)
           successors.append(new_node)
       return successors
-  def aStarSearch(self, start_position, goal_position, walls, heuristic):
       
+  def aStarSearch(self, start_position, goal_position, walls, heuristic):
     def priorityQueueFunction(node: Node): 
       # f(n) = g(n) + h(n) (priority = cost + estimatedCost)
       return node.cost + heuristic(node.state, goal_position)
@@ -127,15 +189,13 @@ class BaselineAgent(CaptureAgent):
     reached = []
     while not frontier.isEmpty():
       node: Node = frontier.pop()
-      
       state = node.state
       path = node.path
       cost = node.cost
 
-      # State((x,y), numFood))
       if state == goal_position:
         if not path:
-          return 'Stop'
+          return STOP_ACTION
         else:
           return path[0] 
    
@@ -154,28 +214,174 @@ class BaselineAgent(CaptureAgent):
 
     return None # Failure
 
+
 class OffensiveReflexAgent(BaselineAgent):
-
-  def registerInitialState(self, gameState: GameState):
+  def registerInitialState(self, gameState):
     super().registerInitialState(gameState)
-    CaptureAgent.registerInitialState(self, gameState)
-  
-  def chooseAction(self, gameState: GameState):
-    # Is the agent scared?
-    for enemy in self.getOpponents(gameState):
+    # Get CONSTANT variables
+    self.currentPosition = gameState.getAgentPosition(self.index)
+    self.capsulePositions = self.getCapsulesYouAreOffending(gameState)
+
+    # Get INITIAL Food Positions
+    self.foodPositions = self.getFoodYouAreOffending(gameState).asList()
+
+    # Get INITIAL Enemy Positions
+    self.enemyPositions = []
+    self.scaredEnemyPosition = []
+    self.enemies = self.getEnemiesYouAreOffending(gameState)
+    print(self.enemies)
+    for enemy in self.enemies:
       if gameState.getAgentState(enemy).scaredTimer > 0:
-        # print("Scared Ghost Found")
-        pass
+        self.scaredEnemyPosition.append(gameState.getAgentPosition(enemy))
+      else:
+        self.enemyPositions.append(gameState.getAgentPosition(enemy))
 
-    return 'Stop'
+    self.valueMap = ValueMap(self.mapHeight, self.mapWidth)
 
+    for row in range(self.valueMap.rows):
+      for column in range(self.valueMap.columns):
+        self.valueMap[row][column] = OffensiveReflexAgent.rewardFunction(self, 
+          self.valueMap.translateCoordinate(row, column))
+
+  def getFoodYouAreOffending(self, gameState):
+    if self.isRed:
+      return gameState.getBlueFood()
+    else:
+      return gameState.getRedFood()
+
+  def getCapsulesYouAreOffending(self, gameState):
+    if self.isRed:
+      return gameState.getBlueCapsules()
+    else:
+      return gameState.getRedCapsules()
+  
+  def getEnemiesYouAreOffending(self, gameState):
+    if self.isRed:
+      return gameState.getBlueTeamIndices()
+    else:
+      return gameState.getRedTeamIndices()
+
+  def chooseAction(self, gameState : GameState):
+    self.enemyPositions = []
+    self.scaredEnemyPosition = []
+
+    # Get NEW Current Food Positions
+    self.foodPositions = self.getFoodYouAreOffending(gameState).asList()
+    self.capsulePositions = self.getCapsulesYouAreOffending(gameState)
+
+    # Get NEW Current Enemy Positions and Scared Enemy Positions
+    self.enemies = self.getEnemiesYouAreOffending(gameState)
+
+    for enemy in self.enemies:
+      if gameState.getAgentState(enemy).scaredTimer > 0:
+        self.scaredEnemyPosition.append(gameState.getAgentPosition(enemy))
+      else:
+        self.enemyPositions.append(gameState.getAgentPosition(enemy))
+    
+    self.valueIteration()
+    print(self.foodPositions)
+    
+    # which action is best
+    col, row = gameState.getAgentPosition(self.index)
+    row = self.getOppositeRow(row, self.mapHeight)
+
+    self.legalActions = gameState.getLegalActions(self.index)
+
+    # Update Possible Actions
+    actionValues = {}
+    for action in self.legalActions:
+      if action is Directions.NORTH:
+        actionValues.update({action : self.valueMap.getNorth(row, col)})
+      elif action is Directions.SOUTH:
+        actionValues.update({action : self.valueMap.getSouth(row, col)})
+      elif action is Directions.EAST:
+        actionValues.update({action : self.valueMap.getEast(row, col)})
+      elif action is Directions.WEST:
+        actionValues.update({action : self.valueMap.getWest(row, col)})
+
+    actionToTake = max(actionValues, key=actionValues.get)
+    print(actionValues)
+    print(actionToTake)
+
+    # self.valueMap.printValueMap()
+
+    return actionToTake
+
+  def getOppositeRow(self, row, mapHeight):
+    return mapHeight - 1 - row
+
+  def rewardFunction(self, position):
+    reward = -1
+    if position in self.wallPositions:
+      reward = None
+    if position in self.foodPositions:
+        reward = 50
+    if position in self.enemyPositions:
+      reward = -5000
+    if position in self.capsulePositions:
+      reward = 500
+    if position in self.scaredEnemyPosition:
+      reward = 500
+
+    return reward
+
+  def bellman(self, map: ValueMap, position):
+    row, column = position
+    up, down, left, right = None, None, None, None
+  
+    reward = self.rewardFunction(map.translateCoordinate(row, column))
+    # If reward is none, it is a wall
+    if reward is None:
+      return None
+
+    # up
+    if row < self.mapHeight - 1:
+      up = map.getNorth(row, column)
+    # down
+    if row > 0:
+      down = map.getSouth(row, column)
+    # right
+    if column < self.mapWidth - 1:
+      right = map.getEast(row, column)
+    # left
+    if column > 0:
+      left = map.getWest(row, column)
+
+    if up is None:
+      up = -1
+    if down is None:
+      down = -1
+    if right is None:
+      right = -1
+    if left is None:
+      left = -1
+
+    upValue = up * 0.90 + (right + left) * 0.05
+    downValue = down * 0.90 + (right + left) * 0.05
+    rightValue = right * 0.90 + (up + down) * 0.05
+    leftValue = left * 0.90 + (up + down) * 0.05
+
+    maxAction = max([round(upValue,1), round(downValue,1), round(rightValue,1), round(leftValue,1)])
+    return float(reward) + float(maxAction)
+
+
+  def valueIteration(self):
+    iteration = 100
+    while(iteration > 0):
+      newMap: ValueMap = ValueMap(self.mapHeight, self.mapWidth)
+
+      for row in range(self.mapHeight):
+        for col in range(self.mapWidth):
+          newMap[row][col] = self.bellman(self.valueMap, (row, col))
+      
+      iteration -= 1
+      self.valueMap = newMap
 
 class DefensiveReflexAgent(BaselineAgent):
   def registerInitialState(self, gameState: GameState):
     super().registerInitialState(gameState)
     
-    self.start = gameState.getAgentPosition(self.index)
-    self.walls = gameState.getWalls().asList()
+    self.currentPosition = gameState.getAgentPosition(self.index)
     self.currentTarget = None
     
     # TODO: Initialize variables we need here:
@@ -194,13 +400,12 @@ class DefensiveReflexAgent(BaselineAgent):
     # Once we have decided what to do, we can call aStarSearch to find the best action
     
     # debug draw the entrances
-    self.debugDraw(self.entrancePositions, [0, 1, 0], clear=True)
+    # self.debugDraw(self.entrancePositions, [0, 1, 0], clear=True)
     
-    # Information about the gameState and current agent
+    # # Information about the gameState and current agent
     currentPosition = gameState.getAgentPosition(self.index)
     lastState = self.getPreviousObservation()
-    goalPosition = self.currentTarget if self.currentTarget else self.middleOfMap 
-    enemyIndexes = self.getOpponents(gameState)
+    goalPosition = self.currentTarget if self.currentTarget else self.currentPosition
     isInvestigatingFood = False
     isChasingEnemy = False
     
@@ -225,6 +430,7 @@ class DefensiveReflexAgent(BaselineAgent):
         
     # Function 3
     # If enemy is within observable range, chase them
+    enemyIndexes = self.getOpponents(gameState)
     observableEnemyPositions = [
         gameState.getAgentPosition(enemyIndex) for enemyIndex in enemyIndexes if gameState.getAgentPosition(enemyIndex)]
     if observableEnemyPositions:
@@ -256,7 +462,7 @@ class DefensiveReflexAgent(BaselineAgent):
         
   
     best_action = self.aStarSearch(
-        currentPosition, goalPosition, self.walls, util.manhattanDistance)
+        currentPosition, goalPosition, self.wallPositions, util.manhattanDistance)
     self.currentTarget = goalPosition   
     
     return best_action

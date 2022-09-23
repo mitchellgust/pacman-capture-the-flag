@@ -96,8 +96,13 @@ class ValueMap:
 
     return valueMap
   
-  def translateCoordinate(self, row, column):
-    return (column, self.rows - 1 - row)
+  def translateCoordinate(self, row, column, toMap):
+    if toMap == "pacman":
+      return (column, self.rows - 1 - row)
+    else:
+      return (self.rows - 1- column, row)
+
+
     
   def printValueMap(self):
     for i in range(self.rows):
@@ -229,7 +234,6 @@ class OffensiveReflexAgent(BaselineAgent):
     self.enemyPositions = []
     self.scaredEnemyPosition = []
     self.enemies = self.getEnemiesYouAreOffending(gameState)
-    print(self.enemies)
     for enemy in self.enemies:
       if gameState.getAgentState(enemy).scaredTimer > 0:
         self.scaredEnemyPosition.append(gameState.getAgentPosition(enemy))
@@ -241,7 +245,7 @@ class OffensiveReflexAgent(BaselineAgent):
     for row in range(self.valueMap.rows):
       for column in range(self.valueMap.columns):
         self.valueMap[row][column] = OffensiveReflexAgent.rewardFunction(self, 
-          self.valueMap.translateCoordinate(row, column))
+          self.valueMap.translateCoordinate(row, column, "pacman"))
 
   def getFoodYouAreOffending(self, gameState):
     if self.isRed:
@@ -279,11 +283,13 @@ class OffensiveReflexAgent(BaselineAgent):
         self.enemyPositions.append(gameState.getAgentPosition(enemy))
     
     self.valueIteration()
-    print(self.foodPositions)
+
     
     # which action is best
-    col, row = gameState.getAgentPosition(self.index)
-    row = self.getOppositeRow(row, self.mapHeight)
+    rowPac, colPac = gameState.getAgentPosition(self.index)
+    valueMapPos = self.valueMap.translateCoordinate(rowPac, colPac, "value")
+    row = valueMapPos[0]
+    col = valueMapPos[1]
 
     self.legalActions = gameState.getLegalActions(self.index)
 
@@ -303,8 +309,6 @@ class OffensiveReflexAgent(BaselineAgent):
     print(actionValues)
     print(actionToTake)
 
-    # self.valueMap.printValueMap()
-
     return actionToTake
 
   def getOppositeRow(self, row, mapHeight):
@@ -315,9 +319,9 @@ class OffensiveReflexAgent(BaselineAgent):
     if position in self.wallPositions:
       reward = None
     if position in self.foodPositions:
-        reward = 50
+        reward = 300
     if position in self.enemyPositions:
-      reward = -5000
+      reward = -6000
     if position in self.capsulePositions:
       reward = 500
     if position in self.scaredEnemyPosition:
@@ -329,7 +333,7 @@ class OffensiveReflexAgent(BaselineAgent):
     row, column = position
     up, down, left, right = None, None, None, None
   
-    reward = self.rewardFunction(map.translateCoordinate(row, column))
+    reward = self.rewardFunction(map.translateCoordinate(row, column, "pacman"))
     # If reward is none, it is a wall
     if reward is None:
       return None

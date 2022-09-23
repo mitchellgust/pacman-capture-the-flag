@@ -403,57 +403,57 @@ class DefensiveReflexAgent(BaselineAgent):
     # self.debugDraw(self.entrancePositions, [0, 1, 0], clear=True)
     
     # # Information about the gameState and current agent
-    # currentPosition = gameState.getAgentPosition(self.index)
-    # lastState = self.getPreviousObservation()
-    # goalPosition = self.currentTarget if self.currentTarget else self.currentPosition
-    # isInvestigatingFood = False
-    # isChasingEnemy = False
+    currentPosition = gameState.getAgentPosition(self.index)
+    lastState = self.getPreviousObservation()
+    goalPosition = self.currentTarget if self.currentTarget else self.currentPosition
+    isInvestigatingFood = False
+    isChasingEnemy = False
     
     
-    # # Function 1
-    # # By default - Put Agent near the middle of the maze, priorititising the location to be in a conjestion of food
-    # goalPosition = self.middleOfMap
+    # Function 1
+    # By default - Put Agent near the middle of the maze, priorititising the location to be in a conjestion of food
+    goalPosition = self.middleOfMap
     
-    # # Function 2
-    # # If food is detected as eaten from the last observation, go to that location
-    # if lastState: 
-    #   lastStateFoods = self.getFoodYouAreDefending(lastState).asList()
-    #   currentStateFoods = self.getFoodYouAreDefending(gameState).asList()
-    #   foodsEatenSinceLastState = [food for food in lastStateFoods if food not in currentStateFoods]
+    # Function 2
+    # If food is detected as eaten from the last observation, go to that location
+    if lastState: 
+      lastStateFoods = self.getFoodYouAreDefending(lastState).asList()
+      currentStateFoods = self.getFoodYouAreDefending(gameState).asList()
+      foodsEatenSinceLastState = [food for food in lastStateFoods if food not in currentStateFoods]
       
-    #   if foodsEatenSinceLastState:
-    #     isInvestigatingFood = True
-    #     goalPosition = min(foodsEatenSinceLastState,
-    #                         key=lambda x: self.getMazeDistance(currentPosition, x))
+      if foodsEatenSinceLastState:
+        isInvestigatingFood = True
+        goalPosition = min(foodsEatenSinceLastState,
+                            key=lambda x: self.getMazeDistance(currentPosition, x))
         
-    # # Function 3
-    # # If enemy is within observable range, chase them
-    # observableEnemyPositions = [
-    #     gameState.getAgentPosition(enemyIndex) for enemyIndex in self.enemies if gameState.getAgentPosition(enemyIndex)]
-    # if observableEnemyPositions:
-    #   closest_enemy = min(observableEnemyPositions,
-    #                       key=lambda x: self.getMazeDistance(currentPosition, x))
+    # Function 3
+    # If enemy is within observable range, chase them
+    enemyIndexes = self.getOpponents(gameState)
+    observableEnemyPositions = [
+        gameState.getAgentPosition(enemyIndex) for enemyIndex in enemyIndexes if gameState.getAgentPosition(enemyIndex)]
+    if observableEnemyPositions:
+      closest_enemy = min(observableEnemyPositions,
+                          key=lambda x: self.getMazeDistance(currentPosition, x))
       
-    #   # so we don't chase into enemy territory
-    #   if self.isRed:
-    #     if closest_enemy[0] < self.middleOfMap[0]:
-    #       goalPosition = closest_enemy
-    #       isChasingEnemy = True
-    #   else:
-    #     if closest_enemy[0] > self.middleOfMap[0]:
-    #       goalPosition = closest_enemy
-    #       isChasingEnemy = True
+      # so we don't chase into enemy territory
+      if self.isRed:
+        if closest_enemy[0] < self.middleOfMap[0]:
+          goalPosition = closest_enemy
+          isChasingEnemy = True
+      else:
+        if closest_enemy[0] > self.middleOfMap[0]:
+          goalPosition = closest_enemy
+          isChasingEnemy = True
 
-    # # Function 4
-    # # When Scared - Move away from the enemy pacman but stay relatively close
-    # if gameState.getAgentState(self.index).scaredTimer > 0:
-    #   if isChasingEnemy:
-    #     goalPosition = self.middleOfMap
+    # Function 4
+    # When Scared - Move away from the enemy pacman but stay relatively close
+    if gameState.getAgentState(self.index).scaredTimer > 0:
+      if isChasingEnemy:
+        goalPosition = self.middleOfMap
         
   
-    # best_action = self.aStarSearch(
-    #     currentPosition, goalPosition, self.wallPositions, util.manhattanDistance)
-    # self.currentTarget = goalPosition   
+    best_action = self.aStarSearch(
+        currentPosition, goalPosition, self.wallPositions, util.manhattanDistance)
+    self.currentTarget = goalPosition   
     
-    # return best_action
-    return Directions.STOP
+    return best_action

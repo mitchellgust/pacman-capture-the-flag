@@ -279,7 +279,8 @@ class OffensiveReflexAgent(BaselineAgent):
         self.enemyPositions.append(gameState.getAgentPosition(enemy))
     
     self.valueIteration()
-
+    print(self.foodPositions)
+    
     # which action is best
     col, row = gameState.getAgentPosition(self.index)
     row = self.getOppositeRow(row, self.mapHeight)
@@ -321,6 +322,7 @@ class OffensiveReflexAgent(BaselineAgent):
       reward = 500
     if position in self.scaredEnemyPosition:
       reward = 500
+
     return reward
 
   def bellman(self, map: ValueMap, position):
@@ -357,7 +359,7 @@ class OffensiveReflexAgent(BaselineAgent):
     upValue = up * 0.90 + (right + left) * 0.05
     downValue = down * 0.90 + (right + left) * 0.05
     rightValue = right * 0.90 + (up + down) * 0.05
-    leftValue = right * 0.90 + (up + down) * 0.05
+    leftValue = left * 0.90 + (up + down) * 0.05
 
     maxAction = max([round(upValue,1), round(downValue,1), round(rightValue,1), round(leftValue,1)])
     return float(reward) + float(maxAction)

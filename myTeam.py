@@ -224,13 +224,14 @@ class BaselineAgent(CaptureAgent):
 
 class OffensiveReflexAgent(BaselineAgent):
   def registerInitialState(self, gameState):
-    self.lastPositionReward = -100
+    self.lastPositionReward = -1
     self.scaredGhostReward = 20
     self.foodReward = 30
     self.ghostReward = -1000
     self.capsuleReward = 40
-    self.deadendReward = -40
-    self.emptyLocationReward = -1
+    self.deadendReward = -400
+    self.emptyLocationReward = -0.1
+    self.gamma = 0.9
 
 
     self.enemyClose = False
@@ -283,15 +284,9 @@ class OffensiveReflexAgent(BaselineAgent):
 
     # Get INITIAL Enemy Positions
     self.enemyPositions = []
-    self.scaredEnemyPosition = []
+    self.scaredEnemyPositions = []
     self.enemies = self.getEnemiesYouAreOffending(gameState)
 
-    
-    for enemy in self.enemies:
-      if gameState.getAgentState(enemy).scaredTimer > 0:
-        self.scaredEnemyPosition.append(gameState.getAgentPosition(enemy))
-      else:
-        self.enemyPositions.append(gameState.getAgentPosition(enemy))
 
     self.valueMap = ValueMap(self.mapHeight, self.mapWidth)
 
@@ -321,39 +316,30 @@ class OffensiveReflexAgent(BaselineAgent):
       return gameState.getRedTeamIndices()
 
   def chooseAction(self, gameState : GameState):
-    self.enemyPositions = []
-    self.scaredEnemyPosition = []
-    self.enemyClose = False
-    
     # filter positionDistToOpenPositionMap by value greater than 5
     # claustrophobicPositions ={
     #     k: v for (k, v) in self.positionDistToOpenPositionMap.items() if v > 0}
     # self.debugDraw(list(claustrophobicPositions.keys()), [0, 1, 0], clear=True)
 
     self.currentPosition = gameState.getAgentPosition(self.index)
-    if self.currentPosition in self.foodPositions:
-      self.gamma = 0.9
-    if self.currentPosition in self.entrancePositions or self.currentPosition == self.initialPosition:
-      self.gamma = 1
     
-
     # Get NEW Current Food Positions
     self.foodPositions = self.getFoodYouAreOffending(gameState).asList()
     self.capsulePositions = self.getCapsulesYouAreOffending(gameState)
 
-    # Get NEW Current Enemy Positions and Scared Enemy Positions
-    self.enemies = self.getEnemiesYouAreOffending(gameState)
-
-    for enemy in self.enemies:
-      if gameState.getAgentState(enemy).scaredTimer > 0:
-        self.scaredEnemyPosition.append(gameState.getAgentPosition(enemy))
-      else:
-        self.enemyPositions.append(gameState.getAgentPosition(enemy))
+    gameState = self.getCurrentObservation()
+    enemyIndexes = self.getOpponents(gameState)
+    observableEnemyIndexes = [
+        enemyIndex for enemyIndex in enemyIndexes if gameState.getAgentPosition(enemyIndex)]
+    self.scaredEnemyPositions = [gameState.getAgentPosition(
+        enemyIndex) for enemyIndex in observableEnemyIndexes if gameState.getAgentState(enemyIndex).scaredTimer > 0]
+    self.enemyPositions = [gameState.getAgentPosition(
+        enemyIndex) for enemyIndex in observableEnemyIndexes if gameState.getAgentState(enemyIndex).scaredTimer == 0]
     
+    self.enemyClose = False
     for enemyPos in self.enemyPositions:
-        if enemyPos is not None:
-          if self.getMazeDistance(self.currentPosition, enemyPos) < 5:
-            self.enemyClose = True
+      if self.getMazeDistance(self.currentPosition, enemyPos) < 5:
+        self.enemyClose = True
 
 
     if self.getPreviousObservation():
@@ -410,23 +396,23 @@ class OffensiveReflexAgent(BaselineAgent):
       except:
         previousObservation = None
 
-      if position in self.foodPositions:
+      if position in self.enemyPositions:
+        reward = self.ghostReward
+        if distToSelf < 5 and distToSelf > 0:
+          reward *= 5/distToSelf  
+      elif position in self.foodPositions:
         if self.enemyClose:
-          reward += -self.foodReward
+          reward = -self.foodReward
         else:
-          reward += self.foodReward
+          reward = self.foodReward
           if distToSelf <= 2 and distToSelf > 0:
             reward *= (2/distToSelf)
-      if position in self.enemyPositions:
-        reward += self.ghostReward
-        if distToSelf < 5 and distToSelf > 0:
-          reward *= 5/distToSelf
-      if position in self.capsulePositions:
+      elif position in self.capsulePositions:
         reward += self.capsuleReward
         if distToSelf <= 2 and distToSelf > 0:
           reward *= (2/distToSelf)
-      if position in self.scaredEnemyPosition:
-        reward += self.scaredGhostReward
+      elif position in self.scaredEnemyPositions:
+        reward = self.scaredGhostReward
         if distToSelf <= 2 and distToSelf > 0:
           reward *= (2/distToSelf)
 
@@ -470,17 +456,17 @@ class OffensiveReflexAgent(BaselineAgent):
     if left is None:
       left = -1
 
-    upValue = up * 0.90 + (right + left) * 0.05
-    downValue = down * 0.90 + (right + left) * 0.05
-    rightValue = right * 0.90 + (up + down) * 0.05
-    leftValue = left * 0.90 + (up + down) * 0.05
+    upValue = up * 0.8 + (right + left) * 0.1
+    downValue = down * 0.8 + (right + left) * 0.1
+    rightValue = right * 0.8 + (up + down) * 0.1
+    leftValue = left * 0.8 + (up + down) * 0.1
 
     maxAction = max(upValue, downValue, rightValue, leftValue)
     return float(reward) + (self.gamma * float(maxAction))
 
 
   def valueIteration(self):
-    iteration = 50
+    iteration = 100
     while(iteration > 0):
       newMap: ValueMap = ValueMap(self.mapHeight, self.mapWidth)
 

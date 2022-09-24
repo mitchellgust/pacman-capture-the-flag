@@ -285,7 +285,6 @@ class OffensiveReflexAgent(BaselineAgent):
     # Get INITIAL Enemy Positions
     self.enemyPositions = []
     self.scaredEnemyPositions = []
-    self.enemies = self.getEnemiesYouAreOffending(gameState)
 
 
     self.valueMap = ValueMap(self.mapHeight, self.mapWidth)
@@ -308,12 +307,6 @@ class OffensiveReflexAgent(BaselineAgent):
       return gameState.getBlueCapsules()
     else:
       return gameState.getRedCapsules()
-  
-  def getEnemiesYouAreOffending(self, gameState):
-    if self.isRed:
-      return gameState.getBlueTeamIndices()
-    else:
-      return gameState.getRedTeamIndices()
 
   def chooseAction(self, gameState : GameState):
     # filter positionDistToOpenPositionMap by value greater than 5

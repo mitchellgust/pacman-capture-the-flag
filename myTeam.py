@@ -290,8 +290,8 @@ class OffensiveReflexAgent(BaselineAgent):
       for column in range(self.valueMap.columns):
         self.valueMap[row][column] = OffensiveReflexAgent.rewardFunction(self, 
           self.valueMap.translateCoordinate(row, column, "pacman"))
-        
-   
+
+
 
   def getFoodYouAreOffending(self, gameState):
     if self.isRed:
@@ -345,9 +345,8 @@ class OffensiveReflexAgent(BaselineAgent):
     
     for enemyPos in self.enemyPositions:
         if enemyPos is not None:
-          if self.getMazeDistance(self.currentPosition, enemyPos) < 3:
+          if self.getMazeDistance(self.currentPosition, enemyPos) < 5:
             self.enemyClose = True
-            gamma = 0
     self.valueIteration()
     
     # which action is best
@@ -371,6 +370,7 @@ class OffensiveReflexAgent(BaselineAgent):
         actionValues.update({action : self.valueMap.getWest(row, col)})
 
     actionToTake = max(actionValues, key=actionValues.get)
+    print(actionValues)
 
     return actionToTake
 
@@ -383,25 +383,34 @@ class OffensiveReflexAgent(BaselineAgent):
       distToSelf = self.getMazeDistance(position, self.currentPosition)
 
       if position in self.foodPositions:
-        reward = 100
+        if self.enemyClose:
+          reward += -100
+        else:
+          reward += 100
+          if distToSelf <= 2 and distToSelf > 0:
+            reward *= (2/distToSelf)
       if position in self.enemyPositions:
-        reward = -5000
+        reward += -10000
         if distToSelf < 5 and distToSelf > 0:
-          return reward * (4/distToSelf)
+          reward *= distToSelf
       if position in self.capsulePositions:
-        reward = 200
+        reward += 200
+        if distToSelf <= 2 and distToSelf > 0:
+          reward *= (2/distToSelf)
       if position in self.scaredEnemyPosition:
-        reward = 200
-      if self.holdingPoints > 5 and position in self.entrancePositions:
-        reward = 200
+        reward += 200
+        if distToSelf <= 2 and distToSelf > 0:
+          reward *= (2/distToSelf)
 
-      if distToSelf <= 2 and distToSelf > 0:
-        reward *= (2/distToSelf)
+      if self.holdingPoints > 2 and position in self.entrancePositions:
+        reward += 400
+      if self.holdingPoints == 0 and position in self.entrancePositions:
+        reward += -1
 
       if self.enemyClose:
         deadEndVal = self.positionDistToOpenPositionMap[position]
-        if deadEndVal > 1:
-          reward = -5000
+        if deadEndVal > 0 and distToSelf < 2:
+          reward += -2000
         
       return reward
 
@@ -410,6 +419,7 @@ class OffensiveReflexAgent(BaselineAgent):
     up, down, left, right = None, None, None, None
   
     reward = self.rewardFunction(map.translateCoordinate(row, column, "pacman"))
+
     # If reward is none, it is a wall
     if reward is None:
       return None

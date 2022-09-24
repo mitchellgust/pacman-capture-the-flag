@@ -170,29 +170,7 @@ class BaselineAgent(CaptureAgent):
         entrancePositions.append((midWidth + offset, i))
     self.entrancePositions = entrancePositions
     
-    deadEndPositions = []
-    # get all positions that have 3 walls around them
-    for i in range(self.mapWidth):
-      for j in range(self.mapHeight):
-        # check if position is a wall
-        if gameState.hasWall(i, j):
-          continue
-        # check if position is adjacent to the edge of the map
-        if i == 0 or i == self.mapWidth - 1 or j == 0 or j == self.mapHeight - 1:
-          continue
-        # check if position is on the other side of the map as the agent
-        if (self.isRed and i < midWidth) or (not self.isRed and i > midWidth):
-          continue
-        # check if position has 3 walls around it
-        wallCount = 0
-        xValues = [i - 1, i + 1, i, i]
-        yValues = [j, j, j - 1, j + 1]
-        for x, y in zip(xValues, yValues):
-          if gameState.hasWall(x, y):
-            wallCount += 1
-        if wallCount > 2:
-          deadEndPositions.append((i, j))
-    self.deadEndPositions = deadEndPositions
+
 
   def getSuccessors(self, state, walls):
       successors = []
@@ -272,6 +250,39 @@ class OffensiveReflexAgent(BaselineAgent):
       for column in range(self.valueMap.columns):
         self.valueMap[row][column] = OffensiveReflexAgent.rewardFunction(self, 
           self.valueMap.translateCoordinate(row, column, "pacman"))
+        
+    openPositions = []
+    # get all positions that have just 1 wall around them
+    for i in range(self.mapWidth):
+      for j in range(self.mapHeight):
+        # check if position is a wall
+        if gameState.hasWall(i, j):
+          continue
+        # check if position is adjacent to the edge of the map
+        if i == 0 or i == self.mapWidth - 1 or j == 0 or j == self.mapHeight - 1:
+          continue
+        # check if position has 3 walls around it
+        wallCount = 0
+        xValues = [i - 1, i + 1, i, i]
+        yValues = [j, j, j - 1, j + 1]
+        for x, y in zip(xValues, yValues):
+          if gameState.hasWall(x, y):
+            wallCount += 1
+        if wallCount < 2:
+          openPositions.append((i, j))
+
+    positionDistToOpenPositionMap = {}
+    for i in range(self.mapWidth):
+      for j in range(self.mapHeight):
+        if gameState.hasWall(i, j):
+          continue
+        distancesToOpenPositions = [self.getMazeDistance(
+            (i,j), openPosition) for openPosition in openPositions]
+        minDistance = min(distancesToOpenPositions)
+        positionDistToOpenPositionMap[(
+            i, j)] = minDistance
+
+    self.positionDistToOpenPositionMap = positionDistToOpenPositionMap
 
   def getFoodYouAreOffending(self, gameState):
     if self.isRed:
@@ -294,6 +305,11 @@ class OffensiveReflexAgent(BaselineAgent):
   def chooseAction(self, gameState : GameState):
     self.enemyPositions = []
     self.scaredEnemyPosition = []
+    
+    # filter positionDistToOpenPositionMap by value greater than 5
+    # claustrophobicPositions ={
+    #     k: v for (k, v) in self.positionDistToOpenPositionMap.items() if v > 0}
+    # self.debugDraw(list(claustrophobicPositions.keys()), [0, 1, 0], clear=True)
 
     self.currentPosition = gameState.getAgentPosition(self.index)
     if self.currentPosition in self.foodPositions:
@@ -367,7 +383,7 @@ class OffensiveReflexAgent(BaselineAgent):
 
       if distToSelf <= 2 and distToSelf > 0:
         reward *= (2/distToSelf)
-
+        
       return reward
 
   def bellman(self, map: ValueMap, position):
@@ -446,7 +462,6 @@ class DefensiveReflexAgent(BaselineAgent):
     
     # debug draw the entrances
     # self.debugDraw(self.entrancePositions, [0, 1, 0], clear=True)
-    # self.debugDraw(self.deadEndPositions, [0,1,0], clear=True)
     
     # # Information about the gameState and current agent
     currentPosition = gameState.getAgentPosition(self.index)
@@ -498,9 +513,11 @@ class DefensiveReflexAgent(BaselineAgent):
     if gameState.getAgentState(self.index).scaredTimer > 0:
       if isChasingEnemy:
         closestEnemyPosition = goalPosition
-        firstSuccessorsOfEnemy = self.getSuccessors(closestEnemyPosition, self.walls)
-        secondSuccessorsOfEnemy = [successor for first_successor in firstSuccessorsOfEnemy for successor in self.getSuccessors(first_successor.state, self.walls)]
-        thirdSuccessorsOfEnemy = [successor for second_successor in secondSuccessorsOfEnemy for successor in self.getSuccessors(second_successor.state, self.walls)]
+        firstSuccessorsOfEnemy = self.getSuccessors(
+            closestEnemyPosition, self.wallPositions)
+        secondSuccessorsOfEnemy = [successor for first_successor in firstSuccessorsOfEnemy for successor in self.getSuccessors(first_successor.state, self.wallPositions)]
+        thirdSuccessorsOfEnemy = [successor for second_successor in secondSuccessorsOfEnemy for successor in self.getSuccessors(
+            second_successor.state, self.wallPositions)]
         successors3AwayFromEnemy = [successor.state for successor in thirdSuccessorsOfEnemy if self.getMazeDistance(successor.state, closestEnemyPosition) == 3]
         # self.debugDraw(successors3AwayFromEnemy, [1, 0, 0], clear=False)
         successorClosestToCurrentPosition = min(successors3AwayFromEnemy, key=lambda x: self.getMazeDistance(currentPosition, x), default=self.middleOfMap)

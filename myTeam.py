@@ -225,13 +225,13 @@ class BaselineAgent(CaptureAgent):
 class OffensiveReflexAgent(BaselineAgent):
   def registerInitialState(self, gameState):
     self.lastPositionReward = -1
-    self.scaredGhostReward = 30
+    self.scaredGhostReward = 21
     self.foodReward = 20
     self.ghostReward = -1000
     self.capsuleReward = 40
     self.deadendReward = -0.2
     self.emptyLocationReward = -0.1
-    self.gamma = 0.4
+    self.gamma = 0.2
 
     self.holdingPoints = 0
     self.enemyClose = False

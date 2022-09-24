@@ -225,20 +225,19 @@ class BaselineAgent(CaptureAgent):
 class OffensiveReflexAgent(BaselineAgent):
   def registerInitialState(self, gameState):
     self.lastPositionReward = -1
-    self.scaredGhostReward = 20
-    self.foodReward = 30
+    self.scaredGhostReward = 40
+    self.foodReward = 20
     self.ghostReward = -1000
     self.capsuleReward = 40
-    self.deadendReward = -400
+    self.deadendReward = -40
     self.emptyLocationReward = -0.1
     self.gamma = 0.9
 
-
+    self.holdingPoints = 0
     self.enemyClose = False
     self.gamma = 1
     super().registerInitialState(gameState)
     CaptureAgent.registerInitialState(self, gameState)
-    self.holdingPoints = 0
     # Get CONSTANT variables
     self.currentPosition = gameState.getAgentPosition(self.index)
     self.initialPosition = gameState.getAgentPosition(self.index)
@@ -398,23 +397,17 @@ class OffensiveReflexAgent(BaselineAgent):
 
       if position in self.enemyPositions:
         reward = self.ghostReward
-        if distToSelf < 5 and distToSelf > 0:
-          reward *= 5/distToSelf  
       elif position in self.foodPositions:
         if self.enemyClose:
           reward = -self.foodReward
-        else:
-          reward = self.foodReward
           if distToSelf <= 2 and distToSelf > 0:
             reward *= (2/distToSelf)
+        else:
+          reward = self.foodReward
       elif position in self.capsulePositions:
         reward += self.capsuleReward
-        if distToSelf <= 2 and distToSelf > 0:
-          reward *= (2/distToSelf)
       elif position in self.scaredEnemyPositions:
         reward = self.scaredGhostReward
-        if distToSelf <= 2 and distToSelf > 0:
-          reward *= (2/distToSelf)
 
       if self.enemyClose:
         deadEndVal = self.positionDistToOpenPositionMap[position]

@@ -224,6 +224,7 @@ class BaselineAgent(CaptureAgent):
 
 class OffensiveReflexAgent(BaselineAgent):
   def registerInitialState(self, gameState):
+    self.enemyClose = False
     self.gamma = 1
     super().registerInitialState(gameState)
     CaptureAgent.registerInitialState(self, gameState)
@@ -236,23 +237,6 @@ class OffensiveReflexAgent(BaselineAgent):
     # Get INITIAL Food Positions
     self.foodPositions = self.getFoodYouAreOffending(gameState).asList()
 
-    # Get INITIAL Enemy Positions
-    self.enemyPositions = []
-    self.scaredEnemyPosition = []
-    self.enemies = self.getEnemiesYouAreOffending(gameState)
-    for enemy in self.enemies:
-      if gameState.getAgentState(enemy).scaredTimer > 0:
-        self.scaredEnemyPosition.append(gameState.getAgentPosition(enemy))
-      else:
-        self.enemyPositions.append(gameState.getAgentPosition(enemy))
-
-    self.valueMap = ValueMap(self.mapHeight, self.mapWidth)
-
-    for row in range(self.valueMap.rows):
-      for column in range(self.valueMap.columns):
-        self.valueMap[row][column] = OffensiveReflexAgent.rewardFunction(self, 
-          self.valueMap.translateCoordinate(row, column, "pacman"))
-        
     openPositions = []
     # get all positions that have just 1 wall around them
     for i in range(self.mapWidth):
@@ -286,6 +270,29 @@ class OffensiveReflexAgent(BaselineAgent):
 
     self.positionDistToOpenPositionMap = positionDistToOpenPositionMap
 
+
+
+    # Get INITIAL Enemy Positions
+    self.enemyPositions = []
+    self.scaredEnemyPosition = []
+    self.enemies = self.getEnemiesYouAreOffending(gameState)
+
+    
+    for enemy in self.enemies:
+      if gameState.getAgentState(enemy).scaredTimer > 0:
+        self.scaredEnemyPosition.append(gameState.getAgentPosition(enemy))
+      else:
+        self.enemyPositions.append(gameState.getAgentPosition(enemy))
+
+    self.valueMap = ValueMap(self.mapHeight, self.mapWidth)
+
+    for row in range(self.valueMap.rows):
+      for column in range(self.valueMap.columns):
+        self.valueMap[row][column] = OffensiveReflexAgent.rewardFunction(self, 
+          self.valueMap.translateCoordinate(row, column, "pacman"))
+        
+   
+
   def getFoodYouAreOffending(self, gameState):
     if self.isRed:
       return gameState.getBlueFood()
@@ -307,6 +314,7 @@ class OffensiveReflexAgent(BaselineAgent):
   def chooseAction(self, gameState : GameState):
     self.enemyPositions = []
     self.scaredEnemyPosition = []
+    self.enemyClose = False
     
     # filter positionDistToOpenPositionMap by value greater than 5
     # claustrophobicPositions ={
@@ -335,6 +343,11 @@ class OffensiveReflexAgent(BaselineAgent):
       else:
         self.enemyPositions.append(gameState.getAgentPosition(enemy))
     
+    for enemyPos in self.enemyPositions:
+        if enemyPos is not None:
+          if self.getMazeDistance(self.currentPosition, enemyPos) < 3:
+            self.enemyClose = True
+            gamma = 0
     self.valueIteration()
     
     # which action is best
@@ -358,7 +371,6 @@ class OffensiveReflexAgent(BaselineAgent):
         actionValues.update({action : self.valueMap.getWest(row, col)})
 
     actionToTake = max(actionValues, key=actionValues.get)
-    print(actionValues)
 
     return actionToTake
 
@@ -373,18 +385,23 @@ class OffensiveReflexAgent(BaselineAgent):
       if position in self.foodPositions:
         reward = 100
       if position in self.enemyPositions:
-        reward = -1000
+        reward = -5000
         if distToSelf < 5 and distToSelf > 0:
-          return reward * (10/distToSelf)
+          return reward * (4/distToSelf)
       if position in self.capsulePositions:
-        reward = 100
+        reward = 200
       if position in self.scaredEnemyPosition:
-        reward = 300
+        reward = 200
       if self.holdingPoints > 5 and position in self.entrancePositions:
         reward = 200
 
       if distToSelf <= 2 and distToSelf > 0:
         reward *= (2/distToSelf)
+
+      if self.enemyClose:
+        deadEndVal = self.positionDistToOpenPositionMap[position]
+        if deadEndVal > 1:
+          reward = -5000
         
       return reward
 
@@ -424,7 +441,7 @@ class OffensiveReflexAgent(BaselineAgent):
     rightValue = right * 0.90 + (up + down) * 0.05
     leftValue = left * 0.90 + (up + down) * 0.05
 
-    maxAction = max(round(upValue,1), round(downValue,1), round(rightValue,1), round(leftValue,1))
+    maxAction = max(upValue, downValue, rightValue, leftValue)
     return float(reward) + (self.gamma * float(maxAction))
 
 

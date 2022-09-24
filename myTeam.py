@@ -446,7 +446,7 @@ class DefensiveReflexAgent(BaselineAgent):
     
     # debug draw the entrances
     # self.debugDraw(self.entrancePositions, [0, 1, 0], clear=True)
-    self.debugDraw(self.deadEndPositions, [0,1,0], clear=True)
+    # self.debugDraw(self.deadEndPositions, [0,1,0], clear=True)
     
     # # Information about the gameState and current agent
     currentPosition = gameState.getAgentPosition(self.index)

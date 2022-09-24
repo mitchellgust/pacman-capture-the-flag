@@ -323,11 +323,9 @@ class OffensiveReflexAgent(BaselineAgent):
 
     self.currentPosition = gameState.getAgentPosition(self.index)
     if self.currentPosition in self.foodPositions:
-      self.holdingPoints += 1
-      self.gamma = 0.5
+      self.gamma = 0.9
     if self.currentPosition in self.entrancePositions or self.currentPosition == self.initialPosition:
       self.gamma = 1
-      self.holdingPoints = 0
     
 
     # Get NEW Current Food Positions
@@ -347,6 +345,24 @@ class OffensiveReflexAgent(BaselineAgent):
         if enemyPos is not None:
           if self.getMazeDistance(self.currentPosition, enemyPos) < 5:
             self.enemyClose = True
+
+
+    if self.getPreviousObservation():
+      previousFoods = self.getPreviousObservation().getBlueFood().asList(
+      ) if self.red else self.getPreviousObservation().getRedFood().asList()
+      missingFoods = [
+          food for food in previousFoods if food not in self.getFood(gameState).asList()]
+      if len(missingFoods) > 0:
+        self.holdingPoints += 1
+      if self.currentPosition in self.entrancePositions:
+        self.holdingPoints = 0
+      if self.holdingPoints > 2:
+        closestEntrance = min(
+            self.entrancePositions, key=lambda x: self.getMazeDistance(self.currentPosition, x))
+        best_action = self.aStarSearch(
+            self.currentPosition, closestEntrance, self.wallPositions, util.manhattanDistance)
+        return best_action
+
     self.valueIteration()
     
     # which action is best
@@ -370,7 +386,6 @@ class OffensiveReflexAgent(BaselineAgent):
         actionValues.update({action : self.valueMap.getWest(row, col)})
 
     actionToTake = max(actionValues, key=actionValues.get)
-    print(actionValues)
 
     return actionToTake
 
@@ -384,7 +399,7 @@ class OffensiveReflexAgent(BaselineAgent):
 
       if position in self.foodPositions:
         if self.enemyClose:
-          reward += -100
+          reward += -10
         else:
           reward += 100
           if distToSelf <= 2 and distToSelf > 0:
@@ -392,7 +407,7 @@ class OffensiveReflexAgent(BaselineAgent):
       if position in self.enemyPositions:
         reward += -10000
         if distToSelf < 5 and distToSelf > 0:
-          reward *= distToSelf
+          reward *= 5/distToSelf
       if position in self.capsulePositions:
         reward += 200
         if distToSelf <= 2 and distToSelf > 0:
@@ -402,15 +417,10 @@ class OffensiveReflexAgent(BaselineAgent):
         if distToSelf <= 2 and distToSelf > 0:
           reward *= (2/distToSelf)
 
-      if self.holdingPoints > 2 and position in self.entrancePositions:
-        reward += 400
-      if self.holdingPoints == 0 and position in self.entrancePositions:
-        reward += -1
-
       if self.enemyClose:
         deadEndVal = self.positionDistToOpenPositionMap[position]
         if deadEndVal > 0 and distToSelf < 2:
-          reward += -2000
+          reward = -200
         
       return reward
 
@@ -456,7 +466,7 @@ class OffensiveReflexAgent(BaselineAgent):
 
 
   def valueIteration(self):
-    iteration = 100
+    iteration = 50
     while(iteration > 0):
       newMap: ValueMap = ValueMap(self.mapHeight, self.mapWidth)
 

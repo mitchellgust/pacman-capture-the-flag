@@ -170,6 +170,30 @@ class BaselineAgent(CaptureAgent):
         entrancePositions.append((midWidth + offset, i))
     self.entrancePositions = entrancePositions
     
+    deadEndPositions = []
+    # get all positions that have 3 walls around them
+    for i in range(self.mapWidth):
+      for j in range(self.mapHeight):
+        # check if position is a wall
+        if gameState.hasWall(i, j):
+          continue
+        # check if position is adjacent to the edge of the map
+        if i == 0 or i == self.mapWidth - 1 or j == 0 or j == self.mapHeight - 1:
+          continue
+        # check if position is on the other side of the map as the agent
+        if (self.isRed and i < midWidth) or (not self.isRed and i > midWidth):
+          continue
+        # check if position has 3 walls around it
+        wallCount = 0
+        xValues = [i - 1, i + 1, i, i]
+        yValues = [j, j, j - 1, j + 1]
+        for x, y in zip(xValues, yValues):
+          if gameState.hasWall(x, y):
+            wallCount += 1
+        if wallCount > 2:
+          deadEndPositions.append((i, j))
+    self.deadEndPositions = deadEndPositions
+
   def getSuccessors(self, state, walls):
       successors = []
       for action in ALL_ACTIONS: # Includes Stop Action
@@ -424,6 +448,7 @@ class DefensiveReflexAgent(BaselineAgent):
     
     # debug draw the entrances
     # self.debugDraw(self.entrancePositions, [0, 1, 0], clear=True)
+    # self.debugDraw(self.deadEndPositions, [0,1,0], clear=True)
     
     # # Information about the gameState and current agent
     currentPosition = gameState.getAgentPosition(self.index)

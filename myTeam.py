@@ -224,6 +224,15 @@ class BaselineAgent(CaptureAgent):
 
 class OffensiveReflexAgent(BaselineAgent):
   def registerInitialState(self, gameState):
+    self.lastPositionReward = -1
+    self.scaredGhostReward = 20
+    self.foodReward = 30
+    self.ghostReward = -1000
+    self.capsuleReward = 40
+    self.deadendReward = -40
+    self.emptyLocationReward = -0.1
+
+
     self.enemyClose = False
     self.gamma = 1
     super().registerInitialState(gameState)
@@ -394,33 +403,33 @@ class OffensiveReflexAgent(BaselineAgent):
     if position in self.wallPositions:
       return None
     else:
-      reward = -1
+      reward = self.emptyLocationReward
       distToSelf = self.getMazeDistance(position, self.currentPosition)
 
       if position in self.foodPositions:
         if self.enemyClose:
-          reward += -10
+          reward += -self.foodReward
         else:
-          reward += 100
+          reward += self.foodReward
           if distToSelf <= 2 and distToSelf > 0:
             reward *= (2/distToSelf)
       if position in self.enemyPositions:
-        reward += -10000
+        reward += self.ghostReward
         if distToSelf < 5 and distToSelf > 0:
           reward *= 5/distToSelf
       if position in self.capsulePositions:
-        reward += 200
+        reward += self.capsuleReward
         if distToSelf <= 2 and distToSelf > 0:
           reward *= (2/distToSelf)
       if position in self.scaredEnemyPosition:
-        reward += 200
+        reward += self.scaredGhostReward
         if distToSelf <= 2 and distToSelf > 0:
           reward *= (2/distToSelf)
 
       if self.enemyClose:
         deadEndVal = self.positionDistToOpenPositionMap[position]
         if deadEndVal > 0 and distToSelf < 2:
-          reward = -200
+          reward = self.deadendReward
         
       return reward
 

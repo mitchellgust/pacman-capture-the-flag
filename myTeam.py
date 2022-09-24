@@ -224,14 +224,14 @@ class BaselineAgent(CaptureAgent):
 
 class OffensiveReflexAgent(BaselineAgent):
   def registerInitialState(self, gameState):
-    self.lastPositionReward = -1
-    self.scaredGhostReward = 21
-    self.foodReward = 20
+    self.lastPositionReward = -2
+    self.scaredGhostReward = 20
+    self.foodReward = 30
     self.ghostReward = -1000
     self.capsuleReward = 40
     self.deadendReward = -0.2
     self.emptyLocationReward = -0.1
-    self.gamma = 0.2
+    self.gamma = 0.9
 
     self.holdingPoints = 0
     self.enemyClose = False
@@ -278,6 +278,7 @@ class OffensiveReflexAgent(BaselineAgent):
             i, j)] = minDistance
 
     self.positionDistToOpenPositionMap = positionDistToOpenPositionMap
+    self.closestEntrance = min(self.entrancePositions, key=lambda x: self.getMazeDistance(self.currentPosition, x))
 
 
 
@@ -340,7 +341,7 @@ class OffensiveReflexAgent(BaselineAgent):
       if self.getMazeDistance(self.currentPosition, enemyPos) < 5:
         self.enemyClose = True
 
-
+    self.closestEntrance = min(self.entrancePositions, key=lambda x: self.getMazeDistance(self.currentPosition, x))
     if self.getPreviousObservation():
       previousFoods = self.getPreviousObservation().getBlueFood().asList(
       ) if self.red else self.getPreviousObservation().getRedFood().asList()
@@ -350,12 +351,12 @@ class OffensiveReflexAgent(BaselineAgent):
         self.holdingPoints += 1
       if self.currentPosition in self.entrancePositions:
         self.holdingPoints = 0
-      # if self.holdingPoints > 2:
-      #   closestEntrance = min(
-      #       self.entrancePositions, key=lambda x: self.getMazeDistance(self.currentPosition, x))
-      #   best_action = self.aStarSearch(
-      #       self.currentPosition, closestEntrance, self.wallPositions, util.manhattanDistance)
-      #   return best_action
+      if self.holdingPoints > 4:
+        closestEntrance = min(
+            self.entrancePositions, key=lambda x: self.getMazeDistance(self.currentPosition, x))
+        best_action = self.aStarSearch(
+            self.currentPosition, closestEntrance, self.wallPositions, util.manhattanDistance)
+        return best_action
 
     self.valueIteration()
     
@@ -397,6 +398,8 @@ class OffensiveReflexAgent(BaselineAgent):
 
       if position in self.enemyPositions:
         reward = self.ghostReward
+      elif position == self.closestEntrance and self.holdingPoints > 0:
+        reward = self.holdingPoints
       elif position in self.foodPositions:
         if self.enemyClose:
           reward = self.deadendReward
@@ -407,14 +410,12 @@ class OffensiveReflexAgent(BaselineAgent):
       elif position in self.scaredEnemyPositions:
         reward = self.scaredGhostReward
 
+      if position in [self.getPreviousObservation().getAgentPosition(self.index) if previousObservation is not None else None]:
+        reward = self.lastPositionReward
       if self.enemyClose:
         deadEndVal = self.positionDistToOpenPositionMap[position]
         if deadEndVal > 0 and distToSelf < 2:
           reward = self.deadendReward
-      if position in [self.getPreviousObservation().getAgentPosition(self.index) if previousObservation is not None else None]:
-        reward = self.lastPositionReward
-      if position in self.entrancePositions and self.holdingPoints > 0:
-        reward = 10 * self.holdingPoints
       return reward
 
   def bellman(self, map: ValueMap, position):

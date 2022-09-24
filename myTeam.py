@@ -225,13 +225,13 @@ class BaselineAgent(CaptureAgent):
 class OffensiveReflexAgent(BaselineAgent):
   def registerInitialState(self, gameState):
     self.lastPositionReward = -1
-    self.scaredGhostReward = 40
+    self.scaredGhostReward = 30
     self.foodReward = 20
     self.ghostReward = -1000
     self.capsuleReward = 40
-    self.deadendReward = -40
+    self.deadendReward = -0.2
     self.emptyLocationReward = -0.1
-    self.gamma = 0.9
+    self.gamma = 0.4
 
     self.holdingPoints = 0
     self.enemyClose = False
@@ -350,12 +350,12 @@ class OffensiveReflexAgent(BaselineAgent):
         self.holdingPoints += 1
       if self.currentPosition in self.entrancePositions:
         self.holdingPoints = 0
-      if self.holdingPoints > 2:
-        closestEntrance = min(
-            self.entrancePositions, key=lambda x: self.getMazeDistance(self.currentPosition, x))
-        best_action = self.aStarSearch(
-            self.currentPosition, closestEntrance, self.wallPositions, util.manhattanDistance)
-        return best_action
+      # if self.holdingPoints > 2:
+      #   closestEntrance = min(
+      #       self.entrancePositions, key=lambda x: self.getMazeDistance(self.currentPosition, x))
+      #   best_action = self.aStarSearch(
+      #       self.currentPosition, closestEntrance, self.wallPositions, util.manhattanDistance)
+      #   return best_action
 
     self.valueIteration()
     
@@ -399,9 +399,7 @@ class OffensiveReflexAgent(BaselineAgent):
         reward = self.ghostReward
       elif position in self.foodPositions:
         if self.enemyClose:
-          reward = -self.foodReward
-          if distToSelf <= 2 and distToSelf > 0:
-            reward *= (2/distToSelf)
+          reward = self.deadendReward
         else:
           reward = self.foodReward
       elif position in self.capsulePositions:
@@ -415,6 +413,8 @@ class OffensiveReflexAgent(BaselineAgent):
           reward = self.deadendReward
       if position in [self.getPreviousObservation().getAgentPosition(self.index) if previousObservation is not None else None]:
         reward = self.lastPositionReward
+      if position in self.entrancePositions and self.holdingPoints > 0:
+        reward = 10 * self.holdingPoints
       return reward
 
   def bellman(self, map: ValueMap, position):
@@ -459,7 +459,7 @@ class OffensiveReflexAgent(BaselineAgent):
 
 
   def valueIteration(self):
-    iteration = 100
+    iteration = 50
     while(iteration > 0):
       newMap: ValueMap = ValueMap(self.mapHeight, self.mapWidth)
 

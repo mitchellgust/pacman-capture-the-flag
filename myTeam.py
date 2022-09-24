@@ -223,6 +223,8 @@ class BaselineAgent(CaptureAgent):
 class OffensiveReflexAgent(BaselineAgent):
   def registerInitialState(self, gameState):
     super().registerInitialState(gameState)
+    CaptureAgent.registerInitialState(self, gameState)
+    self.holdingPoints = 0
     # Get CONSTANT variables
     self.currentPosition = gameState.getAgentPosition(self.index)
     self.capsulePositions = self.getCapsulesYouAreOffending(gameState)
@@ -269,6 +271,15 @@ class OffensiveReflexAgent(BaselineAgent):
     self.enemyPositions = []
     self.scaredEnemyPosition = []
 
+    self.currentPosition = gameState.getAgentPosition(self.index)
+    if self.currentPosition in self.foodPositions:
+      self.holdingPoints += 1
+      print(self.holdingPoints)
+    if self.currentPosition in self.entrancePositions:
+      self.holdingPoints = 0
+      print(self.holdingPoints)
+    
+
     # Get NEW Current Food Positions
     self.foodPositions = self.getFoodYouAreOffending(gameState).asList()
     self.capsulePositions = self.getCapsulesYouAreOffending(gameState)
@@ -283,10 +294,10 @@ class OffensiveReflexAgent(BaselineAgent):
         self.enemyPositions.append(gameState.getAgentPosition(enemy))
     
     self.valueIteration()
-
+    self.valueMap.printValueMap()
     
     # which action is best
-    rowPac, colPac = gameState.getAgentPosition(self.index)
+    rowPac, colPac =  self.currentPosition
     valueMapPos = self.valueMap.translateCoordinate(rowPac, colPac, "value")
     row = valueMapPos[0]
     col = valueMapPos[1]
@@ -306,28 +317,34 @@ class OffensiveReflexAgent(BaselineAgent):
         actionValues.update({action : self.valueMap.getWest(row, col)})
 
     actionToTake = max(actionValues, key=actionValues.get)
-    print(actionValues)
-    print(actionToTake)
 
     return actionToTake
 
-  def getOppositeRow(self, row, mapHeight):
-    return mapHeight - 1 - row
-
   def rewardFunction(self, position):
-    reward = -1
-    if position in self.wallPositions:
-      reward = None
-    if position in self.foodPositions:
-        reward = 300
-    if position in self.enemyPositions:
-      reward = -6000
-    if position in self.capsulePositions:
-      reward = 500
-    if position in self.scaredEnemyPosition:
-      reward = 500
 
-    return reward
+    if position in self.wallPositions:
+      return None
+    else:
+      reward = -1
+      distToSelf = self.getMazeDistance(position, self.currentPosition)
+
+      if position in self.foodPositions:
+        reward = 100
+      if position in self.enemyPositions:
+        reward = -1000
+        if distToSelf < 5 and distToSelf > 0:
+          return reward * (5/distToSelf)
+      if position in self.capsulePositions:
+        reward = 200
+      if position in self.scaredEnemyPosition:
+        reward = 200
+      if self.holdingPoints > 5 and position in self.entrancePositions:
+        reward = 200
+
+      if distToSelf <= 2 and distToSelf > 0:
+        reward *= (2/distToSelf)
+
+      return reward
 
   def bellman(self, map: ValueMap, position):
     row, column = position
@@ -365,7 +382,7 @@ class OffensiveReflexAgent(BaselineAgent):
     rightValue = right * 0.90 + (up + down) * 0.05
     leftValue = left * 0.90 + (up + down) * 0.05
 
-    maxAction = max([round(upValue,1), round(downValue,1), round(rightValue,1), round(leftValue,1)])
+    maxAction = max(round(upValue,1), round(downValue,1), round(rightValue,1), round(leftValue,1))
     return float(reward) + float(maxAction)
 
 

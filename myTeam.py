@@ -224,13 +224,13 @@ class BaselineAgent(CaptureAgent):
 
 class OffensiveReflexAgent(BaselineAgent):
   def registerInitialState(self, gameState):
-    self.lastPositionReward = -1
+    self.lastPositionReward = -100
     self.scaredGhostReward = 20
     self.foodReward = 30
     self.ghostReward = -1000
     self.capsuleReward = 40
     self.deadendReward = -40
-    self.emptyLocationReward = -0.1
+    self.emptyLocationReward = -1
 
 
     self.enemyClose = False
@@ -405,6 +405,10 @@ class OffensiveReflexAgent(BaselineAgent):
     else:
       reward = self.emptyLocationReward
       distToSelf = self.getMazeDistance(position, self.currentPosition)
+      try:
+        previousObservation = self.getPreviousObservation()
+      except:
+        previousObservation = None
 
       if position in self.foodPositions:
         if self.enemyClose:
@@ -430,7 +434,8 @@ class OffensiveReflexAgent(BaselineAgent):
         deadEndVal = self.positionDistToOpenPositionMap[position]
         if deadEndVal > 0 and distToSelf < 2:
           reward = self.deadendReward
-        
+      if position in [self.getPreviousObservation().getAgentPosition(self.index) if previousObservation is not None else None]:
+        reward = self.lastPositionReward
       return reward
 
   def bellman(self, map: ValueMap, position):

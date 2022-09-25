@@ -23,7 +23,7 @@ import util
 #################
 
 def createTeam(firstIndex, secondIndex, isRed,
-               first='OffensiveReflexAgent', second='DefensiveReflexAgent', numTraining=0):
+               first='OffensiveAgentV2', second='DefensiveReflexAgent', numTraining=0):
   """
   This function should return a list of two agents that will form the
   team, initialized using firstIndex and secondIndex as their agent
@@ -555,3 +555,187 @@ class DefensiveReflexAgent(BaselineAgent):
     self.currentTarget = goalPosition   
     
     return best_action
+  
+
+class OffensiveAgentV2(BaselineAgent):
+  def registerInitialState(self, gameState: GameState):
+    super().registerInitialState(gameState)
+    # Constants
+    self.mdpIterations = 10
+    self.lastPositionReward = -1
+    self.scaredGhostReward = 20
+    self.foodReward = 30
+    self.ghostReward = -1000
+    self.capsuleReward = 40
+    self.defaultReward = -0.1
+    self.returnHomeThreshold = 3
+    self.gamma = 0.9
+
+    self.walls = gameState.getWalls().asList()
+    self.mapWidth = gameState.data.layout.width
+    self.mapHeight = gameState.data.layout.height
+    self.scoreMap = self.getNewMap(self.walls)
+    self.holdingPoints = 0
+    CaptureAgent.registerInitialState(self, gameState)
+
+  def chooseAction(self, gameState: GameState):
+    currentPosition = gameState.getAgentPosition(self.index)
+
+    # AStar back to ally side to secure some points
+    if self.getPreviousObservation():
+      previousFoods = self.getPreviousObservation().getBlueFood().asList(
+      ) if self.red else self.getPreviousObservation().getRedFood().asList()
+      missingFoods = [
+          food for food in previousFoods if food not in self.getFood(gameState).asList()]
+      if len(missingFoods) > 0:
+        self.holdingPoints += 1
+      if currentPosition in self.entrancePositions:
+        self.holdingPoints = 0
+      if self.holdingPoints > self.returnHomeThreshold:
+        enemyIndexes = self.getOpponents(gameState)
+        observableEnemyPositions = [gameState.getAgentPosition(
+          enemyIndex) for enemyIndex in enemyIndexes if gameState.getAgentPosition(enemyIndex)]
+        entrancesAwayFromEnemy = [entrance for entrance in self.entrancePositions if not any([self.getMazeDistance(entrance, enemy) < 3 for enemy in observableEnemyPositions])]
+        closestEntrance = min(
+            entrancesAwayFromEnemy, key=lambda x: self.getMazeDistance(currentPosition, x))
+        best_action = self.aStarSearch(
+            currentPosition, closestEntrance, self.walls, util.manhattanDistance)
+        return best_action
+
+    # If not securing points, use MDP to update the score map
+    self.scoreMap = self.valueIteration(self.scoreMap, gameState)
+    legalActions = gameState.getLegalActions(self.index)
+
+    return self.getBestActionFromScoreMap(legalActions, self.scoreMap, currentPosition)
+
+  def getRewardMap(self, gameState: GameState):
+    food = self.getFood(gameState).asList()
+    walls = self.walls
+    capsules = self.getCapsules(gameState)
+    scoreMap = self.getNewMap(walls)
+    width = self.mapWidth
+    height = self.mapHeight
+
+    gameState = self.getCurrentObservation()
+    enemyIndexes = self.getOpponents(gameState)
+    observableEnemyIndexes = [
+        enemyIndex for enemyIndex in enemyIndexes if gameState.getAgentPosition(enemyIndex)]
+    scaredEnemyPositions = [gameState.getAgentPosition(
+        enemyIndex) for enemyIndex in observableEnemyIndexes if gameState.getAgentState(enemyIndex).scaredTimer > 0]
+    unscaredEnemyPositions = [gameState.getAgentPosition(
+        enemyIndex) for enemyIndex in observableEnemyIndexes if gameState.getAgentState(enemyIndex).scaredTimer == 0]
+
+    previousObservation = self.getPreviousObservation()
+    for x in range(width):
+      for y in range(height):
+        cell = (x, y)
+        if cell in unscaredEnemyPositions:
+          scoreMap[x][y] = self.ghostReward
+        elif cell in [self.getPreviousObservation().getAgentPosition(self.index) if previousObservation is not None else None]:
+          scoreMap[x][y] = self.lastPositionReward
+        elif cell in food:
+          scoreMap[x][y] = self.foodReward
+        elif cell in walls:
+          scoreMap[x][y] = None
+        elif cell in scaredEnemyPositions:
+          scoreMap[x][y] = self.scaredGhostReward
+        elif cell in capsules:
+          scoreMap[x][y] = self.capsuleReward
+        else:
+          scoreMap[x][y] = self.defaultReward
+    return scoreMap
+
+  def getNewMap(self, walls):
+    width = self.mapWidth
+    height = self.mapHeight
+
+    scoreMap = []
+    for x in range(width):
+        scoreMap.append([])
+        for y in range(height):
+            scoreMap[x].append("  ")
+
+    for x in range(width):
+        for y in range(height):
+            if (x, y) in walls:
+                scoreMap[x][y] = None
+            else:
+                scoreMap[x][y] = self.defaultReward
+    return scoreMap
+
+  def getBestActionFromScoreMap(self, legalActions, scoreMap, position):
+    x = position[0]
+    y = position[1]
+    actions = []
+    actionScores = []
+    
+    for action in legalActions:
+      if action is Directions.NORTH:
+        value = scoreMap[x][y+1]
+      elif action is Directions.SOUTH:
+        value = scoreMap[x][y-1]
+      elif action is Directions.EAST:
+        value = scoreMap[x+1][y]
+      elif action is Directions.WEST:
+        value = scoreMap[x-1][y]
+      actions.append(action)
+      actionScores.append(value)
+      
+    # Try to get unstuck if unsure of what to do
+    if len(actions) == 0:
+      return random.choice(legalActions)
+
+    maxScoreIdx = actionScores.index(max(actionScores))
+    maxScoreChoice = actions[maxScoreIdx]
+    return maxScoreChoice
+
+  def bellmannUpdate(self, scoreMap, cell, reward):
+    width = self.mapWidth
+    height = self.mapHeight
+    x = cell[0]
+    y = cell[1]
+
+    # If reward is none, it is a wall
+    if reward is None:
+      return None
+
+    # left
+    if x < width - 1:
+      left = scoreMap[x + 1][y] if scoreMap[x + 1][y] is not None else -1
+    # right
+    if x > 0:
+      right = scoreMap[x - 1][y] if scoreMap[x - 1][y] is not None else -1
+    # up
+    if y < height - 1:
+      up = scoreMap[x][y + 1] if scoreMap[x][y + 1] is not None else -1
+    # down
+    if y > 0:
+      down = scoreMap[x][y - 1] if scoreMap[x][y - 1] is not None else -1
+
+    probability = 0.8
+    probabilityOther = 0.1
+    upValue = up * probability + (right + left) * probabilityOther
+    downValue = down * probability + (right + left) * probabilityOther
+    rightValue = right * probability + (up + down) * probabilityOther
+    leftValue = left * probability + (up + down) * probabilityOther
+
+    maxValue = max([upValue, downValue, rightValue, leftValue])
+    return float(reward + self.gamma * maxValue)
+
+  def valueIteration(self, scoreMap, gameState: GameState):
+    iterations = self.mdpIterations
+    walls = self.walls
+    currentRewardMap = self.getRewardMap(gameState)
+    width = self.mapWidth
+    height = self.mapHeight
+
+    while iterations > 0:
+        newMap = self.getNewMap(walls)
+        for x in range(width):
+            for y in range(height):
+                reward = currentRewardMap[x][y]
+                newMap[x][y] = self.bellmannUpdate(scoreMap, (x, y), reward)
+        scoreMap = newMap
+        iterations -= 1
+
+    return scoreMap

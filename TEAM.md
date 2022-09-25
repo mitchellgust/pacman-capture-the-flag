@@ -11,7 +11,7 @@
 **Team members:**
 
 * S3851781 - Jeffrey Zezhong Tan - S3851781@student.rmit.edu.au - JeffreyTan1
-* S782095 - Mitchell Joseph Gust - s3782095@student.rmit.edu.au - s3782095
+* S3782095 - Mitchell Joseph Gust - s3782095@student.rmit.edu.au - s3782095
 * S3848979 - Sofya Filippova - s3848979@student.rmit.edu.au - sonkafi
 
 Replace the lines above with the correct details of members. Delete or add lines as needed.

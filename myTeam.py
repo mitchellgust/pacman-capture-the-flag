@@ -225,6 +225,35 @@ class BaselineAgent(CaptureAgent):
 
     return None # Failure
 
+  def isRowOrColumnEdge(self, row, column):
+    return row == 0 or row == self.mapWidth - 1 or column == 0 or column == self.mapHeight - 1
+
+  def getOpenPositions(self, gameState: GameState):
+    openPositions = []
+    for i in range(self.mapWidth):
+      for j in range(self.mapHeight):
+        # Don't Check Position that is a Wall
+        if gameState.hasWall(i, j):
+          continue
+
+        # Don't Check Row or Column that is on Edge of Map
+        if self.isRowOrColumnEdge(i, j):
+          continue
+
+        # For All Other Positions, Count Surrounding Walls
+        wallCount = 0
+        positionsToCheck = [(i, j - 1), (i + 1, j), (i, j + 1), (i - 1, j)] # North, East, South, West
+
+        for x, y in positionsToCheck:
+          if gameState.hasWall(x, y):
+            wallCount += 1
+        
+        # If Position is Surrounded by 1 or 0 Walls, Add to List
+        if wallCount < 2:
+          openPositions.append((i, j))
+
+    return openPositions
+
 
 class OffensiveReflexAgent(BaselineAgent):
   def registerInitialState(self, gameState):
@@ -251,25 +280,7 @@ class OffensiveReflexAgent(BaselineAgent):
     # Get INITIAL Food Positions
     self.foodPositions = self.getFoodYouAreOffending(gameState).asList()
 
-    openPositions = []
-    # get all positions that have just 1 wall around them
-    for i in range(self.mapWidth):
-      for j in range(self.mapHeight):
-        # check if position is a wall
-        if gameState.hasWall(i, j):
-          continue
-        # check if position is adjacent to the edge of the map
-        if i == 0 or i == self.mapWidth - 1 or j == 0 or j == self.mapHeight - 1:
-          continue
-        # check if position has 3 walls around it
-        wallCount = 0
-        xValues = [i - 1, i + 1, i, i]
-        yValues = [j, j, j - 1, j + 1]
-        for x, y in zip(xValues, yValues):
-          if gameState.hasWall(x, y):
-            wallCount += 1
-        if wallCount < 2:
-          openPositions.append((i, j))
+    self.openPositions = self.getOpenPositions(gameState)
 
     positionDistToOpenPositionMap = {}
     for i in range(self.mapWidth):
@@ -277,7 +288,7 @@ class OffensiveReflexAgent(BaselineAgent):
         if gameState.hasWall(i, j):
           continue
         distancesToOpenPositions = [self.getMazeDistance(
-            (i,j), openPosition) for openPosition in openPositions]
+            (i,j), openPosition) for openPosition in self.openPositions]
         minDistance = min(distancesToOpenPositions)
         positionDistToOpenPositionMap[(
             i, j)] = minDistance
@@ -491,8 +502,25 @@ class DefensiveReflexAgent(BaselineAgent):
     # 
     # Once we have decided what to do, we can call aStarSearch to find the best action
     
-    # debug draw the entrances
-    # self.debugDraw(self.entrancePositions, [0, 1, 0], clear=True)
+    # debug draw the edges
+    # set edges
+    self.edges = []
+    for i in range(gameState.data.layout.width):
+      for j in range(gameState.data.layout.height):
+        if self.isRowOrColumnEdge(i, j):
+          self.edges.append((i, j))
+
+
+    for edge in self.edges:
+      self.debugDraw(edge, [1, 0, 0])
+    
+    self.openPositions = []
+    self.openPositions = self.getOpenPositions(gameState)
+    print("open positions: ", self.openPositions)
+
+    for position in self.openPositions:
+      self.debugDraw(position, [0, 1, 0])
+
     
     # # Information about the gameState and current agent
     currentPosition = gameState.getAgentPosition(self.index)

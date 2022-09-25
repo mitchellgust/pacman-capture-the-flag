@@ -169,7 +169,7 @@ class BaselineAgent(CaptureAgent):
       # If Space Empty on Left and Right of The Middle of the Map
       if not gameState.hasWall(midWidth - 1, row) and not gameState.hasWall(midWidth, row):
         entrancePositions.append((midWidth + teamOffset, row))
-    
+        
     return entrancePositions
 
   def getSuccessors(self, state, walls):
@@ -638,14 +638,18 @@ class OffensiveAgentV2(BaselineAgent):
             observableEnemyPositions.append(enemyPosition)
 
         # Get Entrances where Enemy is at least 3 steps away
-        safeEntrances = []
-        for entrance in self.entrancePositions:
-          for enemyPosition in observableEnemyPositions:
-            if self.getMazeDistance(entrance, enemyPosition) > 3:
-              safeEntrances.append(entrance)
+        if observableEnemyPositions:
+          safeEntrances = []
+          for entrance in self.entrancePositions:
+            for enemyPosition in observableEnemyPositions:
+              if self.getMazeDistance(entrance, enemyPosition) > 3:
+                safeEntrances.append(entrance)
+        else:
+          # If No Observable Enemies, All Entrances are Safe
+          safeEntrances = self.entrancePositions
 
         # Closest Safe Entrance
-        closestEntrance = min(safeEntrances, key=lambda x: self.getMazeDistance(currentPosition, x), default=self.middleOfMap)
+        closestEntrance = min(safeEntrances, key=lambda x: self.getMazeDistance(currentPosition, x))
 
         best_action = self.aStarSearch(
             currentPosition, closestEntrance, self.walls, util.manhattanDistance)

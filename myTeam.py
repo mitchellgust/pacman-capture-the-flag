@@ -568,7 +568,7 @@ class OffensiveAgentV2(BaselineAgent):
     self.ghostReward = -1000
     self.capsuleReward = 40
     self.defaultReward = -0.1
-    self.returnHomeThreshold = 3
+    self.returnHomeThreshold = 2
     self.gamma = 0.9
 
     self.walls = gameState.getWalls().asList()

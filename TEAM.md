@@ -6,13 +6,13 @@
 
 **Instructor:** _Prof. Sebastian Sardina_
 
-**Team name:** _[replace this with team name in plan text]_
+**Team name:** Paku_Paku
 
 **Team members:**
 
-* Student number - Full Name - Student email - Student Github username
-* Student number - Full Name - Student email - Student Github username
-* Student number - Full Name - Student email - Student Github username
+* S3851781 - Jeffrey Zezhong Tan - S3851781@student.rmit.edu.au - JeffreyTan1
+* S782095 - Mitchell Joseph Gust - s3782095@student.rmit.edu.au - s3782095
+* S3848979 - Sofya Filippova - s3848979@student.rmit.edu.au - sonkafi
 
 Replace the lines above with the correct details of members. Delete or add lines as needed.
 

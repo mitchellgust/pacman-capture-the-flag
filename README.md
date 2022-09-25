@@ -1,4 +1,3 @@
-[![Open in Visual Studio Code](https://classroom.github.com/assets/open-in-vscode-c66648af7eb3fe8bc4f294546bfd86ef473780cde1dea487d3c4ff354943c9ae.svg)](https://classroom.github.com/online_ide?assignment_repo_id=8349510&assignment_repo_type=AssignmentRepo)
 # RMIT AI'22 - Project - Pacman Capture the Flag
 
 You must fully and carefully read the project specification and instructions detailed in this file. 
@@ -122,11 +121,11 @@ more time.
 
 ## 3. Pre-contest feedback contests
 
-We will be running **_feedback_ contests** based on preliminary versions of teams' agents in the weeks before the final project submission. We will start once **five teams** have submitted their preliminary agents by tagging their repos with "`feedback`".
+We will be running **_feedback_ contests** based on preliminary versions of teams' agents in the weeks before the final project submission. We will start once **five teams** have submitted their preliminary agents by tagging their repos with "`testing`".
 
 Participating in these pre-contests will give you **a lot of insights** on how your solution is performing and how to improve it. Results, including replays for every game, will be available only for those teams that have submitted. 
 
-You can re-submit multiple times, and we will just run the version tagged `feedback`. These tournaments carry no marking at all; they are just designed for **continuous feedback** for you to  analyse and improve your solution! You do not need to certify these versions.
+You can re-submit multiple times, and we will just run the version tagged `testing`. These tournaments carry no marking at all; they are just designed for **continuous feedback** for you to  analyse and improve your solution! You do not need to certify these versions.
 
 We will try to run these pre-competitions frequently, at least once a day once enough teams are submitting versions.
 

@@ -202,7 +202,7 @@ class BaselineAgent(CaptureAgent):
 
       if state == goal_position:
         if not path:
-          return Directions.Stop
+          return Directions.STOP
         else:
           return path[0] 
    

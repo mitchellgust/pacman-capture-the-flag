@@ -159,23 +159,16 @@ class BaselineAgent(CaptureAgent):
     self.middleOfMap = (middleColumn + offset, middleRow)
 
     # Calculate Entrance Positions
-    self.entrancePositions = self.getEntrancePositions(gameState, middleColumn)
+    self.entrancePositions = self.getEntrancePositions(gameState, middleColumn, offset)
 
-  def getEntrancePositions(self, gameState: GameState, midWidth: int):
-    # Before Middle of Map = (midWidth - 1, row)
-    # After Middle of Map = (midWidth, row)
+  def getEntrancePositions(self, gameState: GameState, midWidth: int, teamOffset: int):
     entrancePositions = []
 
     # Get Entrance Positions
-    if self.isRed:
-      for row in range(self.mapHeight):
-        if not gameState.hasWall(midWidth - 1, row) and not gameState.hasWall(midWidth, row):
-          entrancePositions.append((midWidth + RED_TEAM_OFFSET, row))
-
-    else:
-      for row in range(self.mapHeight):
-        if not gameState.hasWall(midWidth - 1, row) and not gameState.hasWall(midWidth, row):
-          entrancePositions.append((midWidth + BLUE_TEAM_OFFSET, row))
+    for row in range(self.mapHeight):
+      # If Space Empty on Left and Right of The Middle of the Map
+      if not gameState.hasWall(midWidth - 1, row) and not gameState.hasWall(midWidth, row):
+        entrancePositions.append((midWidth + teamOffset, row))
     
     return entrancePositions
 
@@ -336,6 +329,7 @@ class OffensiveReflexAgent(BaselineAgent):
       return gameState.getRedCapsules()
 
   def chooseAction(self, gameState : GameState):
+    # Get NEW Position
     self.currentPosition = gameState.getAgentPosition(self.index)
     
     # Get NEW Current Food Positions
@@ -599,32 +593,63 @@ class OffensiveAgentV2(BaselineAgent):
     CaptureAgent.registerInitialState(self, gameState)
 
   def chooseAction(self, gameState: GameState):
+    # Create Map of Minimum Distances to Positions with 1 or 0 surrounding walls
     if self.distanceMapToOpenPositions is None:
-      # Create Map of Minimum Distances to Positions with 1 or 0 surrounding walls
       openPositions = self.getOpenPositions(gameState)
       self.distanceMapToOpenPositions = self.getDistanceMapToOpenPositions(gameState, openPositions)
 
     currentPosition = gameState.getAgentPosition(self.index)
 
-    # AStar back to ally side to secure some points
+    # Analyse New Move
     if self.getPreviousObservation():
-      previousFoods = self.getPreviousObservation().getBlueFood().asList(
-      ) if self.red else self.getPreviousObservation().getRedFood().asList()
-      missingFoods = [
-          food for food in previousFoods if food not in self.getFood(gameState).asList()]
-      if len(missingFoods) > 0:
+
+      # Get Previous Food
+      previousFood = []
+      if self.red:
+        previousFood = self.getPreviousObservation().getBlueFood().asList()
+      else:
+        previousFood = self.getPreviousObservation().getRedFood().asList()
+      
+      # If Food was Eaten in New Turn
+      currentFood = self.getFood(gameState).asList()
+      missingFood = []
+      for food in previousFood:
+        if food not in currentFood:
+          missingFood.append(food)
+      
+      # Food was Eaten - Add to Holding Points
+      if len(missingFood) > 0:
         self.holdingPoints += 1
+      
+      # Food is Returned - Reset Holding Points
       if currentPosition in self.entrancePositions:
-        self.holdingPoints = 0
+        self.holdingPoints = 0      
+      
+      # Return Home is Threshold is Reached
       if self.holdingPoints > self.returnHomeThreshold:
+
         enemyIndexes = self.getOpponents(gameState)
-        observableEnemyPositions = [gameState.getAgentPosition(
-          enemyIndex) for enemyIndex in enemyIndexes if gameState.getAgentPosition(enemyIndex)]
-        entrancesAwayFromEnemy = [entrance for entrance in self.entrancePositions if not any([self.getMazeDistance(entrance, enemy) < 3 for enemy in observableEnemyPositions])]
-        closestEntrance = min(
-            entrancesAwayFromEnemy, key=lambda x: self.getMazeDistance(currentPosition, x))
+
+        # Get Obvervable Enemies
+        observableEnemyPositions = []
+        for enemyIndex in enemyIndexes:
+          enemyPosition = gameState.getAgentPosition(enemyIndex)
+          if enemyPosition:
+            observableEnemyPositions.append(enemyPosition)
+
+        # Get Entrances where Enemy is at least 3 steps away
+        safeEntrances = []
+        for entrance in self.entrancePositions:
+          for enemyPosition in observableEnemyPositions:
+            if self.getMazeDistance(entrance, enemyPosition) > 3:
+              safeEntrances.append(entrance)
+
+        # Closest Safe Entrance
+        closestEntrance = min(safeEntrances, key=lambda x: self.getMazeDistance(currentPosition, x))
+
         best_action = self.aStarSearch(
             currentPosition, closestEntrance, self.walls, util.manhattanDistance)
+            
         return best_action
 
     # If not securing points, use MDP to update the score map

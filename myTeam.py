@@ -84,31 +84,27 @@ class ValueMap:
   def __init__(self, rows, columns):
     self.rows = rows
     self.columns = columns
-    self.valueMap = self.initialise2DArray(rows, columns)
+    self.valueMap = self.initialiseValueMap(rows, columns)
 
-  def initialise2DArray(self, rows, columns):
-    # initialise 2d array
+  def initialiseValueMap(self, rows, columns):
     valueMap = []
     for row in range(rows):
       valueMap.append([])
       for column in range(columns):
         valueMap[row].append(" ")
-
     return valueMap
   
   def translateCoordinate(self, row, column, toMap):
     if toMap == "pacman":
       return (column, self.rows - 1 - row)
     else:
-      return (self.rows - 1- column, row)
+      return (self.rows - 1 - column, row)
 
-
-    
-  def printValueMap(self):
+  def print(self):
     for i in range(self.rows):
       for j in range(self.columns):
         if self.valueMap[i][j] is None:
-          print("WA", end=" ")
+          print("W", end=" ") # Inidicates Wall
         else:
           print(self.valueMap[i][j], end=" ")
       print()
@@ -146,7 +142,6 @@ class ValueMap:
 RED_TEAM_OFFSET = -1
 BLUE_TEAM_OFFSET = 0
 ALL_ACTIONS = [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.WEST, Directions.STOP]
-STOP_ACTION = Directions.STOP
 
 class BaselineAgent(CaptureAgent):
   def registerInitialState(self, gameState: GameState):
@@ -164,13 +159,14 @@ class BaselineAgent(CaptureAgent):
     self.middleOfMap = (midWidth + offset, midHeight)
 
     # Calculate Entrance Positions
+    self.entrancePositions = self.getEntrancePositions(gameState, midWidth, offset)
+
+  def getEntrancePositions(self, gameState: GameState, midWidth: int, offset: int):
     entrancePositions = []
     for i in range(self.mapHeight):
       if not gameState.hasWall(midWidth + offset, i) and not gameState.hasWall(midWidth, i):
         entrancePositions.append((midWidth + offset, i))
-    self.entrancePositions = entrancePositions
-    
-
+    return entrancePositions
 
   def getSuccessors(self, state, walls):
       successors = []
@@ -202,7 +198,7 @@ class BaselineAgent(CaptureAgent):
 
       if state == goal_position:
         if not path:
-          return STOP_ACTION
+          return Directions.Stop
         else:
           return path[0] 
    
@@ -614,7 +610,10 @@ class OffensiveAgentV2(BaselineAgent):
             i, j)] = minDistance
 
     self.positionDistToOpenPositionMap = positionDistToOpenPositionMap
+
   def chooseAction(self, gameState: GameState):
+    self.debugDraw(list(self.entrancePositions), [0, 1, 0])
+
     if self.positionDistToOpenPositionMap is None:
       self.calculateOpenPositionsMap(gameState)
     currentPosition = gameState.getAgentPosition(self.index)

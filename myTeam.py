@@ -576,9 +576,47 @@ class OffensiveAgentV2(BaselineAgent):
     self.mapHeight = gameState.data.layout.height
     self.scoreMap = self.getNewMap(self.walls)
     self.holdingPoints = 0
+    
+    self.positionDistToOpenPositionMap = None
+    
     CaptureAgent.registerInitialState(self, gameState)
+    
+  def calculateOpenPositionsMap(self, gameState):
+    openPositions = []
+    # get all positions that have just 1 wall around them
+    for i in range(self.mapWidth):
+      for j in range(self.mapHeight):
+        # check if position is a wall
+        if gameState.hasWall(i, j):
+          continue
+        # check if position is adjacent to the edge of the map
+        if i == 0 or i == self.mapWidth - 1 or j == 0 or j == self.mapHeight - 1:
+          continue
+        # check if position has 3 walls around it
+        wallCount = 0
+        xValues = [i - 1, i + 1, i, i]
+        yValues = [j, j, j - 1, j + 1]
+        for x, y in zip(xValues, yValues):
+          if gameState.hasWall(x, y):
+            wallCount += 1
+        if wallCount < 2:
+          openPositions.append((i, j))
 
+    positionDistToOpenPositionMap = {}
+    for i in range(self.mapWidth):
+      for j in range(self.mapHeight):
+        if gameState.hasWall(i, j):
+          continue
+        distancesToOpenPositions = [self.getMazeDistance(
+            (i, j), openPosition) for openPosition in openPositions]
+        minDistance = min(distancesToOpenPositions)
+        positionDistToOpenPositionMap[(
+            i, j)] = minDistance
+
+    self.positionDistToOpenPositionMap = positionDistToOpenPositionMap
   def chooseAction(self, gameState: GameState):
+    if self.positionDistToOpenPositionMap is None:
+      self.calculateOpenPositionsMap(gameState)
     currentPosition = gameState.getAgentPosition(self.index)
 
     # AStar back to ally side to secure some points
@@ -634,7 +672,11 @@ class OffensiveAgentV2(BaselineAgent):
         elif cell in [self.getPreviousObservation().getAgentPosition(self.index) if previousObservation is not None else None]:
           scoreMap[x][y] = self.lastPositionReward
         elif cell in food:
-          scoreMap[x][y] = self.foodReward
+          if len(unscaredEnemyPositions) > 0:
+            foodRisk = self.positionDistToOpenPositionMap[cell]
+            scoreMap[x][y] = -200 if foodRisk > 1 else self.foodReward
+          else: 
+            scoreMap[x][y] = self.foodReward
         elif cell in walls:
           scoreMap[x][y] = None
         elif cell in scaredEnemyPositions:

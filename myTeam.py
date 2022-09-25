@@ -160,7 +160,6 @@ class BaselineAgent(CaptureAgent):
 
     # Calculate Entrance Positions
     self.entrancePositions = self.getEntrancePositions(gameState, middleColumn)
-    print(self.entrancePositions)
 
   def getEntrancePositions(self, gameState: GameState, midWidth: int):
     entrancePositions = []
@@ -241,11 +240,12 @@ class OffensiveReflexAgent(BaselineAgent):
     self.holdingPoints = 0
     self.enemyClose = False
     self.gamma = 1
+
     super().registerInitialState(gameState)
     CaptureAgent.registerInitialState(self, gameState)
+
     # Get CONSTANT variables
     self.currentPosition = gameState.getAgentPosition(self.index)
-    self.initialPosition = gameState.getAgentPosition(self.index)
     self.capsulePositions = self.getCapsulesYouAreOffending(gameState)
 
     # Get INITIAL Food Positions
@@ -621,11 +621,6 @@ class OffensiveAgentV2(BaselineAgent):
     self.positionDistToOpenPositionMap = positionDistToOpenPositionMap
 
   def chooseAction(self, gameState: GameState):
-    self.debugDraw(list(self.entrancePositions), [0, 1, 0])
-    # for row in range(self.mapHeight):
-    #   self.debugDraw([(self.middleColumn + RED_TEAM_OFFSET, row)], [1, 0, 0])
-    #   self.debugDraw([(self.middleColumn + BLUE_TEAM_OFFSET, row)], [0, 0, 1])
-
     if self.positionDistToOpenPositionMap is None:
       self.calculateOpenPositionsMap(gameState)
     currentPosition = gameState.getAgentPosition(self.index)

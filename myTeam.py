@@ -645,7 +645,7 @@ class OffensiveAgentV2(BaselineAgent):
               safeEntrances.append(entrance)
 
         # Closest Safe Entrance
-        closestEntrance = min(safeEntrances, key=lambda x: self.getMazeDistance(currentPosition, x))
+        closestEntrance = min(safeEntrances, key=lambda x: self.getMazeDistance(currentPosition, x), default=self.middleOfMap)
 
         best_action = self.aStarSearch(
             currentPosition, closestEntrance, self.walls, util.manhattanDistance)

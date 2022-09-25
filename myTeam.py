@@ -630,14 +630,14 @@ class OffensiveAgentV2(BaselineAgent):
 
         enemyIndexes = self.getOpponents(gameState)
 
-        # Get Obvervable Enemies
+        # Get Obvervable Enemies that are not Scared
         observableEnemyPositions = []
         for enemyIndex in enemyIndexes:
           enemyPosition = gameState.getAgentPosition(enemyIndex)
-          if enemyPosition:
+          if enemyPosition and gameState.getAgentState(enemyIndex).scaredTimer == 0:
             observableEnemyPositions.append(enemyPosition)
 
-        # Get Entrances where Enemy is at least 3 steps away
+        # Get Entrances where Non Scared Enemy is at least 3 steps away
         if observableEnemyPositions:
           safeEntrances = []
           for entrance in self.entrancePositions:

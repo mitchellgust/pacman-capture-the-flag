@@ -649,7 +649,7 @@ class OffensiveAgentV2(BaselineAgent):
 
         best_action = self.aStarSearch(
             currentPosition, closestEntrance, self.walls, util.manhattanDistance)
-
+            
         return best_action
 
     # If not securing points, use MDP to update the score map
@@ -697,18 +697,20 @@ class OffensiveAgentV2(BaselineAgent):
           scoreMap[x][y] = self.capsuleReward
         else:
           scoreMap[x][y] = self.defaultReward
-
     return scoreMap
 
   def getNewMap(self, walls):
+    width = self.mapWidth
+    height = self.mapHeight
+
     scoreMap = []
-    for x in range(self.mapWidth):
+    for x in range(width):
         scoreMap.append([])
-        for y in range(self.mapHeight):
+        for y in range(height):
             scoreMap[x].append("  ")
 
-    for x in range(self.mapWidth):
-        for y in range(self.mapHeight):
+    for x in range(width):
+        for y in range(height):
             if (x, y) in walls:
                 scoreMap[x][y] = None
             else:
@@ -716,7 +718,8 @@ class OffensiveAgentV2(BaselineAgent):
     return scoreMap
 
   def getBestActionFromScoreMap(self, legalActions, scoreMap, position):
-    x, y = position
+    x = position[0]
+    y = position[1]
     actions = []
     actionScores = []
     
@@ -741,46 +744,52 @@ class OffensiveAgentV2(BaselineAgent):
     return maxScoreChoice
 
   def bellmannUpdate(self, scoreMap, cell, reward):
-    x, y = cell
+    width = self.mapWidth
+    height = self.mapHeight
+    x = cell[0]
+    y = cell[1]
 
     # If reward is none, it is a wall
     if reward is None:
       return None
 
     # left
-    if x < self.mapWidth - 1:
+    if x < width - 1:
       left = scoreMap[x + 1][y] if scoreMap[x + 1][y] is not None else -1
     # right
     if x > 0:
       right = scoreMap[x - 1][y] if scoreMap[x - 1][y] is not None else -1
     # up
-    if y < self.mapHeight - 1:
+    if y < height - 1:
       up = scoreMap[x][y + 1] if scoreMap[x][y + 1] is not None else -1
     # down
     if y > 0:
       down = scoreMap[x][y - 1] if scoreMap[x][y - 1] is not None else -1
 
     probability = 0.8
-    probabilityOfOther = 0.1
-
-    upValue = up * probability + (right + left) * probabilityOfOther
-    downValue = down * probability + (right + left) * probabilityOfOther
-    rightValue = right * probability + (up + down) * probabilityOfOther
-    leftValue = left * probability + (up + down) * probabilityOfOther
+    probabilityOther = 0.1
+    upValue = up * probability + (right + left) * probabilityOther
+    downValue = down * probability + (right + left) * probabilityOther
+    rightValue = right * probability + (up + down) * probabilityOther
+    leftValue = left * probability + (up + down) * probabilityOther
 
     maxValue = max([upValue, downValue, rightValue, leftValue])
     return float(reward + self.gamma * maxValue)
 
   def valueIteration(self, scoreMap, gameState: GameState):
+    iterations = self.mdpIterations
+    walls = self.walls
     currentRewardMap = self.getRewardMap(gameState)
+    width = self.mapWidth
+    height = self.mapHeight
 
-    while self.mdpIterations > 0:
-        newMap = self.getNewMap(self.walls)
-        for x in range(self.mapWidth):
-            for y in range(self.mapHeight):
+    while iterations > 0:
+        newMap = self.getNewMap(walls)
+        for x in range(width):
+            for y in range(height):
                 reward = currentRewardMap[x][y]
                 newMap[x][y] = self.bellmannUpdate(scoreMap, (x, y), reward)
         scoreMap = newMap
-        self.mdpIterations -= 1
+        iterations -= 1
 
     return scoreMap

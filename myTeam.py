@@ -150,22 +150,31 @@ class BaselineAgent(CaptureAgent):
 
     self.mapWidth = gameState.data.layout.width
     self.mapHeight = gameState.data.layout.height
-    midWidth = int(self.mapWidth / 2)
-    midHeight = int(self.mapHeight / 2)
+    middleColumn = int(self.mapWidth / 2)
+    middleRow = int(self.mapHeight / 2)
     
     # Calculate Middle of Map Depending on Team
     self.isRed = self.index in gameState.getRedTeamIndices()
     offset = RED_TEAM_OFFSET if self.isRed else BLUE_TEAM_OFFSET
-    self.middleOfMap = (midWidth + offset, midHeight)
+    self.middleOfMap = (middleColumn + offset, middleRow)
 
     # Calculate Entrance Positions
-    self.entrancePositions = self.getEntrancePositions(gameState, midWidth, offset)
+    self.entrancePositions = self.getEntrancePositions(gameState, middleColumn)
+    print(self.entrancePositions)
 
-  def getEntrancePositions(self, gameState: GameState, midWidth: int, offset: int):
+  def getEntrancePositions(self, gameState: GameState, midWidth: int):
     entrancePositions = []
-    for i in range(self.mapHeight):
-      if not gameState.hasWall(midWidth + offset, i) and not gameState.hasWall(midWidth, i):
-        entrancePositions.append((midWidth + offset, i))
+
+    # Get Entrance Positions
+    if self.isRed:
+      for row in range(self.mapHeight):
+        if not gameState.hasWall(midWidth - 1, row) and not gameState.hasWall(midWidth, row):
+          entrancePositions.append((midWidth + RED_TEAM_OFFSET, row))
+    else:
+      for row in range(self.mapHeight):
+        if not gameState.hasWall(midWidth - 1, row) and not gameState.hasWall(midWidth, row):
+          entrancePositions.append((midWidth + BLUE_TEAM_OFFSET, row))
+    
     return entrancePositions
 
   def getSuccessors(self, state, walls):
@@ -613,6 +622,9 @@ class OffensiveAgentV2(BaselineAgent):
 
   def chooseAction(self, gameState: GameState):
     self.debugDraw(list(self.entrancePositions), [0, 1, 0])
+    # for row in range(self.mapHeight):
+    #   self.debugDraw([(self.middleColumn + RED_TEAM_OFFSET, row)], [1, 0, 0])
+    #   self.debugDraw([(self.middleColumn + BLUE_TEAM_OFFSET, row)], [0, 0, 1])
 
     if self.positionDistToOpenPositionMap is None:
       self.calculateOpenPositionsMap(gameState)

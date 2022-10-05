@@ -801,28 +801,35 @@ class OffensiveAgentV2(BaselineAgent):
 # Offensive Q LEARNING AGENT
 class OffensiveQLearningAgent(BaselineAgent):
   def registerInitialState(self, gameState: GameState):
+    # ASSIGNED TO JEFF
+
     # Init q value map
     # Init alpha, epsilon, discount, and numTraining
     pass
   
   def getQValue(self, state, action):
+    # ASSIGNED TO MITCHELL
     # Get q value for state and action
     # Create data structure for q value map
     pass
 
   def computeValueFromQValues(self, state):
+    # ASSIGNED TO MITCHELL
     # Get max q value for state
     pass
 
   def computeActionFromQValues(self, state):
+    # ASSIGNED TO MITCHELL
     # Get action with max q value for state
     pass
 
   def chooseAction(self, gameState: GameState):
+    # ASSIGNED TO SONYA
     # Choose action with epsilon greedy
     pass
 
   def update(self, state, action, nextState, reward):
+    # ASSIGNED TO SONYA
     # Update q value map
     pass
 

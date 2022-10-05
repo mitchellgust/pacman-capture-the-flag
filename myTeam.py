@@ -804,14 +804,16 @@ class OffensiveQLearningAgent(BaselineAgent):
     # ASSIGNED TO JEFF
 
     # Init q value map
+    self.qValueMap = util.Counter(); # temp until Jeff's Dev
     # Init alpha, epsilon, discount, and numTraining
     pass
   
   def getQValue(self, state, action):
     # ASSIGNED TO MITCHELL
     # Get q value for state and action
+    qValue = self.qValueMap[(state, action)]
     # Create data structure for q value map
-    pass
+    return qValue
 
   def computeValueFromQValues(self, state):
     # ASSIGNED TO MITCHELL

@@ -798,25 +798,33 @@ class OffensiveAgentV2(BaselineAgent):
 
     return scoreMap
 
-# Q LEARNING AGENT!!!!
+# Offensive Q LEARNING AGENT
 class OffensiveQLearningAgent(BaselineAgent):
   def registerInitialState(self, gameState: GameState):
+    # Init q value map
+    # Init alpha, epsilon, discount, and numTraining
     pass
-
-  def chooseAction(self, gameState: GameState):
-    pass
-
+  
   def getQValue(self, state, action):
+    # Get q value for state and action
+    # Create data structure for q value map
     pass
 
   def computeValueFromQValues(self, state):
+    # Get max q value for state
     pass
 
   def computeActionFromQValues(self, state):
+    # Get action with max q value for state
     pass
 
-  def getAction(self, state):
+  def chooseAction(self, gameState: GameState):
+    # Choose action with epsilon greedy
     pass
 
   def update(self, state, action, nextState, reward):
+    # Update q value map
     pass
+
+
+# NEXT -> TODO: train q learning agent

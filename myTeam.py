@@ -15,7 +15,7 @@ from array import array
 import random
 from capture import GameState
 from captureAgents import CaptureAgent
-from game import Actions, Directions
+from game import Actions, Directions, Game
 import util
 
 #################
@@ -567,7 +567,6 @@ class DefensiveReflexAgent(BaselineAgent):
     
     return best_action
   
-
 class OffensiveAgentV2(BaselineAgent):
   def registerInitialState(self, gameState: GameState):
     super().registerInitialState(gameState)
@@ -797,3 +796,11 @@ class OffensiveAgentV2(BaselineAgent):
         iterations -= 1
 
     return scoreMap
+
+# Q LEARNING AGENT!!!!
+class OffensiveQLearningAgent(BaselineAgent):
+  def registerInitialState(self, gameState: GameState):
+    pass
+
+  def chooseAction(self, gameState: GameState):
+    pass

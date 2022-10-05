@@ -12,6 +12,7 @@
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 
 from array import array
+from cmath import inf
 import random
 from capture import GameState
 from captureAgents import CaptureAgent
@@ -803,4 +804,19 @@ class OffensiveQLearningAgent(BaselineAgent):
     pass
 
   def chooseAction(self, gameState: GameState):
+    pass
+
+  def getQValue(self, state, action):
+    pass
+
+  def computeValueFromQValues(self, state):
+    pass
+
+  def computeActionFromQValues(self, state):
+    pass
+
+  def getAction(self, state):
+    pass
+
+  def update(self, state, action, nextState, reward):
     pass

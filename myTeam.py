@@ -24,7 +24,7 @@ import util
 #################
 
 def createTeam(firstIndex, secondIndex, isRed,
-               first='OffensiveAgentV2', second='DefensiveReflexAgent', numTraining=0):
+               first='OffensiveQLearningAgent', second='DefensiveReflexAgent', numTraining=0):
   """
   This function should return a list of two agents that will form the
   team, initialized using firstIndex and secondIndex as their agent
@@ -805,6 +805,7 @@ class OffensiveQLearningAgent(BaselineAgent):
 
     # Init q value map
     self.qValueMap = util.Counter(); # temp until Jeff's Dev
+    self.gameState = gameState # temp until Jeff's Dev
     # Init alpha, epsilon, discount, and numTraining
     pass
   
@@ -816,9 +817,24 @@ class OffensiveQLearningAgent(BaselineAgent):
     return qValue
 
   def computeValueFromQValues(self, state):
-    # ASSIGNED TO MITCHELL
-    # Get max q value for state
-    pass
+    maxQValue = 0.00 # Default
+
+    # Get Legal Actions of State
+    legalActions = self.gameState.getLegalActions(state)
+    print("Legal Actions: " + legalActions)
+
+    if not legalActions:
+      return maxQValue # Return 0.00      
+    
+    # Get q Value for Each Legal Action
+    for action in legalActions:
+      qValue = self.getQValue(state, action)
+
+      # New Maximum?
+      if qValue > maxQValue:
+        maxQValue = qValue      
+
+    return maxQValue
 
   def computeActionFromQValues(self, state):
     # ASSIGNED TO MITCHELL
@@ -828,6 +844,7 @@ class OffensiveQLearningAgent(BaselineAgent):
   def chooseAction(self, gameState: GameState):
     # ASSIGNED TO SONYA
     # Choose action with epsilon greedy
+    self.computeValueFromQValues(gameState.getAgentState)
     pass
 
   def update(self, state, action, nextState, reward):

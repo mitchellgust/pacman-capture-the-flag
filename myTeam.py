@@ -112,6 +112,12 @@ class MDP:
         return states
 
     def getReward(self, state, action, nextState, gameState, agent):
+        x, y = state
+        cellValue = self.valueMap[x][y]
+        if type(cellValue) == int or type(cellValue) == float:
+            return cellValue
+        
+        
         lastPositionReward = -1
         scaredGhostReward = 20
         foodReward = 30
@@ -136,11 +142,6 @@ class MDP:
             previousObservation = agent.getPreviousObservation()
         except IndexError:
             pass
-
-        x, y = state
-        cellValue = self.valueMap[x][y]
-        if type(cellValue) == int or type(cellValue) == float:
-            return cellValue
 
         if state in unscaredEnemyPositions:
             return ghostReward
@@ -448,9 +449,15 @@ class ValueIterationAgent(BaselineAgent):
         self.gamma = 0.9
         self.iterations = 100
         self.values = util.Counter()
+        openPositions = self.getOpenPositions(gameState)
+        self.distanceMapToOpenPositions = self.getDistanceMapToOpenPositions(
+            gameState, openPositions)
         self.runValueIteration(gameState)
 
     def chooseAction(self, gameState: GameState):
+        openPositions = self.getOpenPositions(gameState)
+        self.distanceMapToOpenPositions = self.getDistanceMapToOpenPositions(gameState, openPositions)
+      
         bestQVal = float("-inf")
         bestAction = None
         self.currentPosition = gameState.getAgentPosition(self.index)
@@ -471,6 +478,7 @@ class ValueIterationAgent(BaselineAgent):
 
         iterationCount = 0
         while iterationCount < self.iterations:
+            print("Iteration: ", iterationCount)
             iterationCount += 1
             tempValues = util.Counter()
             for state in allStates:
@@ -489,6 +497,8 @@ class ValueIterationAgent(BaselineAgent):
         transitionStatesAndProbs = self.mdp.getTransitionStatesAndProbs(state, action)
 
         for nextState, prob in transitionStatesAndProbs:
-            qVal += prob * (self.mdp.getReward(state, action, nextState, gameState, self) + self.gamma * self.values[nextState])
+            reward = self.mdp.getReward(
+                state, action, nextState, gameState, self) + self.gamma * self.values[nextState]
+            qVal += prob * reward
 
         return qVal

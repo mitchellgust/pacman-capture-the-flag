@@ -111,12 +111,11 @@ class MDP:
                     states.append(state)
         return states
 
-    def getReward(self, state, action, nextState, gameState, agent):
+    def getReward(self, state, action, nextState, computedStates):
         x, y = state
-        cellValue = self.valueMap[x][y]
-        if type(cellValue) == int or type(cellValue) == float:
-            return cellValue
-        
+        cellVal = self.valueMap[x][y]
+        if type(cellVal) == int or type(cellVal) == float:
+            return cellVal
         
         lastPositionReward = -1
         scaredGhostReward = 20
@@ -124,33 +123,26 @@ class MDP:
         ghostReward = -1000
         capsuleReward = 40
         defaultReward = -0.1
-
-        walls = gameState.getWalls()
-        food = agent.getFood(gameState).asList()
-        capsules = agent.getCapsules(gameState)
-        enemyIndexes = agent.getOpponents(gameState)
-        observableEnemyIndexes = [
-            enemyIndex for enemyIndex in enemyIndexes if gameState.getAgentPosition(enemyIndex)]
-        scaredEnemyPositions = [gameState.getAgentPosition(
-            enemyIndex) for enemyIndex in observableEnemyIndexes if gameState.getAgentState(enemyIndex).scaredTimer > 0]
-        unscaredEnemyPositions = [gameState.getAgentPosition(
-            enemyIndex) for enemyIndex in observableEnemyIndexes if
-            gameState.getAgentState(enemyIndex).scaredTimer == 0]
-
-        previousObservation = None
-        try:
-            previousObservation = agent.getPreviousObservation()
-        except IndexError:
-            pass
+        
+        walls = computedStates["walls"]
+        food = computedStates["food"]
+        capsules = computedStates["capsules"]
+        enemyIndexes = computedStates["enemyIndexes"]
+        observableEnemyIndexes = computedStates["observableEnemyIndexes"]
+        scaredEnemyPositions = computedStates["scaredEnemyPositions"]
+        unscaredEnemyPositions = computedStates["unscaredEnemyPositions"]
+        previousObservation = computedStates["previousObservation"]
+        distanceMapToOpenPositions = computedStates["distanceMapToOpenPositions"]
+        agentIndex = computedStates["agentIndex"]
 
         if state in unscaredEnemyPositions:
             return ghostReward
         elif state in [
-            agent.getPreviousObservation().getAgentPosition(agent.index) if previousObservation is not None else None]:
+                previousObservation.getAgentPosition(agentIndex) if previousObservation is not None else None]:
             return lastPositionReward
         elif state in food:
             if len(unscaredEnemyPositions) > 0:
-                foodRisk = agent.distanceMapToOpenPositions[state]
+                foodRisk = distanceMapToOpenPositions[state]
                 return -200 if foodRisk > 1 else foodReward
             else:
                 return foodReward
@@ -162,6 +154,7 @@ class MDP:
             return capsuleReward
         else:
             return defaultReward
+        
 
     def getTransitionStatesAndProbs(self, state, action):
 
@@ -438,6 +431,44 @@ class DefensiveReflexAgent(BaselineAgent):
 
 
 class ValueIterationAgent(BaselineAgent):
+    def getComputedStates(self, gameState: GameState):
+        # Get state of the game
+        walls = gameState.getWalls()
+        food = self.getFood(gameState).asList()
+        capsules = self.getCapsules(gameState)
+        enemyIndexes = self.getOpponents(gameState)
+        observableEnemyIndexes = [
+            enemyIndex for enemyIndex in enemyIndexes if gameState.getAgentPosition(enemyIndex)]
+        scaredEnemyPositions = [gameState.getAgentPosition(
+            enemyIndex) for enemyIndex in observableEnemyIndexes if gameState.getAgentState(enemyIndex).scaredTimer > 0]
+        unscaredEnemyPositions = [gameState.getAgentPosition(
+            enemyIndex) for enemyIndex in observableEnemyIndexes if
+            gameState.getAgentState(enemyIndex).scaredTimer == 0]
+        previousObservation = None
+        try:
+            previousObservation = self.getPreviousObservation()
+        except IndexError:
+            pass
+        
+        openPositions = self.getOpenPositions(gameState)
+        distanceMapToOpenPositions = self.getDistanceMapToOpenPositions(
+            gameState, openPositions)
+
+        computedStates = {
+            "walls": walls,
+            "food": food,
+            "capsules": capsules,
+            "enemyIndexes": enemyIndexes,
+            "observableEnemyIndexes": observableEnemyIndexes,
+            "scaredEnemyPositions": scaredEnemyPositions,
+            "unscaredEnemyPositions": unscaredEnemyPositions,
+            "previousObservation": previousObservation,
+            "openPositions": openPositions,
+            "distanceMapToOpenPositions": distanceMapToOpenPositions,
+            "agentIndex": self.index,
+        }
+        return computedStates
+    
     def registerInitialState(self, gameState: GameState):
         super().registerInitialState(gameState)
         CaptureAgent.registerInitialState(self, gameState)
@@ -447,30 +478,30 @@ class ValueIterationAgent(BaselineAgent):
 
         # AKA discount
         self.gamma = 0.9
-        self.iterations = 100
+        self.iterations = 25
         self.values = util.Counter()
-        openPositions = self.getOpenPositions(gameState)
-        self.distanceMapToOpenPositions = self.getDistanceMapToOpenPositions(
-            gameState, openPositions)
+
+        self.computedStates = self.getComputedStates(gameState)
         self.runValueIteration(gameState)
 
     def chooseAction(self, gameState: GameState):
-        openPositions = self.getOpenPositions(gameState)
-        self.distanceMapToOpenPositions = self.getDistanceMapToOpenPositions(gameState, openPositions)
-      
+        self.computedStates = self.getComputedStates(gameState)
+        self.values = util.Counter()
+        self.runValueIteration(gameState)
+        
         bestQVal = float("-inf")
         bestAction = None
         self.currentPosition = gameState.getAgentPosition(self.index)
 
         legalActions = gameState.getLegalActions(self.index)
+        legalActions.remove(Directions.STOP)
         for action in legalActions:
-            qVal = self.computeQValueFromValues(self.currentPosition, action, gameState)
+            qVal = self.computeQValueFromValues(
+                self.currentPosition, action, gameState)
             print(action, qVal)
             if qVal > bestQVal:
                 bestQVal = qVal
                 bestAction = action
-
-        print("------")
         return bestAction
 
     def runValueIteration(self, gameState: GameState):
@@ -478,14 +509,14 @@ class ValueIterationAgent(BaselineAgent):
 
         iterationCount = 0
         while iterationCount < self.iterations:
-            print("Iteration: ", iterationCount)
             iterationCount += 1
             tempValues = util.Counter()
             for state in allStates:
                 legalActions = gameState.getLegalActions(self.index)
                 maxQVal = float("-inf")
                 for action in legalActions:
-                    qValue = self.computeQValueFromValues(state, action, gameState)
+                    qValue = self.computeQValueFromValues(
+                        state, action, gameState)
                     if qValue > maxQVal:
                         maxQVal = qValue
                 tempValues[state] = maxQVal
@@ -498,7 +529,7 @@ class ValueIterationAgent(BaselineAgent):
 
         for nextState, prob in transitionStatesAndProbs:
             reward = self.mdp.getReward(
-                state, action, nextState, gameState, self) + self.gamma * self.values[nextState]
+                state, action, nextState, self.computedStates) + self.gamma * self.values[nextState]
             qVal += prob * reward
 
         return qVal

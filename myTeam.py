@@ -87,17 +87,11 @@ ALL_ACTIONS = [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.W
 
 class MDP:
     def __init__(self, width, height, initialValue=' '):
-        # TODO: double check this init function
+        # TODO: double check this init function - Checked by Mitchell - redundant code removed
         self.width = width
         self.height = height
 
-        data = [[initialValue for y in range(height)] for x in range(width)]
         self.valueMap = [[initialValue for y in range(height)] for x in range(width)]
-
-        for oldY, row in enumerate(data):
-            y = height - oldY - 1
-            for x, value in enumerate(row):
-                self.valueMap[x][y] = value
 
         self.livingReward = 0.0
         self.noise = 0.2

@@ -79,9 +79,11 @@ class Node:
     def getCost(self):
         return self.cost
 
+
 RED_TEAM_OFFSET = -1
 BLUE_TEAM_OFFSET = 0
 ALL_ACTIONS = [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.WEST, Directions.STOP]
+
 
 class MDP:
     def __init__(self, width, height, initialValue=' '):
@@ -109,17 +111,60 @@ class MDP:
                     states.append(state)
         return states
 
-    def getReward(self, state, action, nextState):
+    def getReward(self, state, action, nextState, gameState, agent):
+        lastPositionReward = -1
+        scaredGhostReward = 20
+        foodReward = 30
+        ghostReward = -1000
+        capsuleReward = 40
+        defaultReward = -0.1
+
+        walls = gameState.getWalls()
+        food = agent.getFood(gameState).asList()
+        capsules = agent.getCapsules(gameState)
+        enemyIndexes = agent.getOpponents(gameState)
+        observableEnemyIndexes = [
+            enemyIndex for enemyIndex in enemyIndexes if gameState.getAgentPosition(enemyIndex)]
+        scaredEnemyPositions = [gameState.getAgentPosition(
+            enemyIndex) for enemyIndex in observableEnemyIndexes if gameState.getAgentState(enemyIndex).scaredTimer > 0]
+        unscaredEnemyPositions = [gameState.getAgentPosition(
+            enemyIndex) for enemyIndex in observableEnemyIndexes if
+            gameState.getAgentState(enemyIndex).scaredTimer == 0]
+
+        previousObservation = None
+        try:
+            previousObservation = agent.getPreviousObservation()
+        except IndexError:
+            pass
+
         x, y = state
-        cell = self.valueMap[x][y]
-        if type(cell) == int or type(cell) == float:
-            return cell
-        return self.livingReward
+        cellValue = self.valueMap[x][y]
+        if type(cellValue) == int or type(cellValue) == float:
+            return cellValue
+
+        if state in unscaredEnemyPositions:
+            return ghostReward
+        elif state in [
+            agent.getPreviousObservation().getAgentPosition(agent.index) if previousObservation is not None else None]:
+            return lastPositionReward
+        elif state in food:
+            if len(unscaredEnemyPositions) > 0:
+                foodRisk = agent.distanceMapToOpenPositions[state]
+                return -200 if foodRisk > 1 else foodReward
+            else:
+                return foodReward
+        elif state in walls:
+            return None
+        elif state in scaredEnemyPositions:
+            return scaredGhostReward
+        elif state in capsules:
+            return capsuleReward
+        else:
+            return defaultReward
 
     def getTransitionStatesAndProbs(self, state, action):
 
         x, y = state
-
 
         successors = []
 
@@ -412,7 +457,7 @@ class ValueIterationAgent(BaselineAgent):
 
         legalActions = gameState.getLegalActions(self.index)
         for action in legalActions:
-            qVal = self.computeQValueFromValues(self.currentPosition, action)
+            qVal = self.computeQValueFromValues(self.currentPosition, action, gameState)
             print(action, qVal)
             if qVal > bestQVal:
                 bestQVal = qVal
@@ -421,7 +466,7 @@ class ValueIterationAgent(BaselineAgent):
         print("------")
         return bestAction
 
-    def runValueIteration(self, gameState : GameState):
+    def runValueIteration(self, gameState: GameState):
         allStates = self.mdp.getStates()
 
         iterationCount = 0
@@ -432,20 +477,18 @@ class ValueIterationAgent(BaselineAgent):
                 legalActions = gameState.getLegalActions(self.index)
                 maxQVal = float("-inf")
                 for action in legalActions:
-                    qValue = self.computeQValueFromValues(state, action)
+                    qValue = self.computeQValueFromValues(state, action, gameState)
                     if qValue > maxQVal:
                         maxQVal = qValue
                 tempValues[state] = maxQVal
             self.values = tempValues
 
-    def computeQValueFromValues(self, state, action):
+    def computeQValueFromValues(self, state, action, gameState):
         qVal = 0
 
         transitionStatesAndProbs = self.mdp.getTransitionStatesAndProbs(state, action)
 
         for nextState, prob in transitionStatesAndProbs:
-            qVal += prob * (self.mdp.getReward(state, action, nextState) + self.gamma * self.values[nextState])
+            qVal += prob * (self.mdp.getReward(state, action, nextState, gameState, self) + self.gamma * self.values[nextState])
 
         return qVal
-
-

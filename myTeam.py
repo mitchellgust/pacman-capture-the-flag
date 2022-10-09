@@ -572,7 +572,7 @@ class OffensiveAgentV2(BaselineAgent):
   def registerInitialState(self, gameState: GameState):
     super().registerInitialState(gameState)
     # Constants
-    self.mdpIterations = 10
+    self.mdpIterations = 20
     self.lastPositionReward = -1
     self.scaredGhostReward = 20
     self.foodReward = 30
@@ -678,27 +678,36 @@ class OffensiveAgentV2(BaselineAgent):
         enemyIndex) for enemyIndex in observableEnemyIndexes if gameState.getAgentState(enemyIndex).scaredTimer > 0]
     unscaredEnemyPositions = [gameState.getAgentPosition(
         enemyIndex) for enemyIndex in observableEnemyIndexes if gameState.getAgentState(enemyIndex).scaredTimer == 0]
+    
+    positionsAdjacentToUnscaredEnemies = set()
+    for enemyPosition in unscaredEnemyPositions:
+      successors = self.getSuccessors(enemyPosition, walls)
+      successorsAsTuples = [successor.state for successor in successors]
+      positionsAdjacentToUnscaredEnemies.update(successorsAsTuples)
+    positionsAdjacentToUnscaredEnemies = list(positionsAdjacentToUnscaredEnemies)
 
     previousObservation = self.getPreviousObservation()
     for x in range(width):
       for y in range(height):
         cell = (x, y)
-        if cell in unscaredEnemyPositions:
+        if cell in walls:
+          scoreMap[x][y] = None
+        elif cell in unscaredEnemyPositions or cell in positionsAdjacentToUnscaredEnemies:
           scoreMap[x][y] = self.ghostReward
-        elif cell in [self.getPreviousObservation().getAgentPosition(self.index) if previousObservation is not None else None]:
-          scoreMap[x][y] = self.lastPositionReward
         elif cell in food:
+          distanceToFood = self.getMazeDistance(gameState.getAgentPosition(self.index), cell)
+          currentfoodReward = self.foodReward * 0.9 ** distanceToFood
           if len(unscaredEnemyPositions) > 0:
             foodRisk = self.distanceMapToOpenPositions[cell]
-            scoreMap[x][y] = -200 if foodRisk > 1 else self.foodReward
+            scoreMap[x][y] = -200 if foodRisk > 1 else currentfoodReward
           else: 
-            scoreMap[x][y] = self.foodReward
-        elif cell in walls:
-          scoreMap[x][y] = None
+            scoreMap[x][y] = currentfoodReward
         elif cell in scaredEnemyPositions:
           scoreMap[x][y] = self.scaredGhostReward
         elif cell in capsules:
           scoreMap[x][y] = self.capsuleReward
+        elif cell in [self.getPreviousObservation().getAgentPosition(self.index) if previousObservation is not None else None]:
+          scoreMap[x][y] = self.lastPositionReward
         else:
           scoreMap[x][y] = self.defaultReward
     return scoreMap

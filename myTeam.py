@@ -24,7 +24,7 @@ import util
 #################
 
 def createTeam(firstIndex, secondIndex, isRed,
-               first='OffensiveQLearningAgent', second='DefensiveReflexAgent', numTraining=0):
+               first='OffensiveAgentV2', second='DefensiveReflexAgent', numTraining=0):
   """
   This function should return a list of two agents that will form the
   team, initialized using firstIndex and secondIndex as their agent
@@ -797,60 +797,3 @@ class OffensiveAgentV2(BaselineAgent):
         iterations -= 1
 
     return scoreMap
-
-# Offensive Q LEARNING AGENT
-class OffensiveQLearningAgent(BaselineAgent):
-  def registerInitialState(self, gameState: GameState):
-    # ASSIGNED TO JEFF
-
-    # Init q value map
-    self.qValueMap = util.Counter(); # temp until Jeff's Dev
-    self.gameState = gameState # temp until Jeff's Dev
-    # Init alpha, epsilon, discount, and numTraining
-    pass
-  
-  def getQValue(self, state, action):
-    # ASSIGNED TO MITCHELL
-    # Get q value for state and action
-    qValue = self.qValueMap[(state, action)]
-    # Create data structure for q value map
-    return qValue
-
-  def computeValueFromQValues(self, state):
-    maxQValue = 0.00 # Default
-
-    # Get Legal Actions of State
-    legalActions = self.gameState.getLegalActions(state)
-    print("Legal Actions: " + legalActions)
-
-    if not legalActions:
-      return maxQValue # Return 0.00      
-    
-    # Get q Value for Each Legal Action
-    for action in legalActions:
-      qValue = self.getQValue(state, action)
-
-      # New Maximum?
-      if qValue > maxQValue:
-        maxQValue = qValue      
-
-    return maxQValue
-
-  def computeActionFromQValues(self, state):
-    # ASSIGNED TO MITCHELL
-    # Get action with max q value for state
-    pass
-
-  def chooseAction(self, gameState: GameState):
-    # ASSIGNED TO SONYA
-    # Choose action with epsilon greedy
-    self.computeValueFromQValues(gameState.getAgentState)
-    pass
-
-  def update(self, state, action, nextState, reward):
-    # ASSIGNED TO SONYA
-    # Update q value map
-    pass
-
-
-# NEXT -> TODO: train q learning agent

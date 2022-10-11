@@ -188,13 +188,22 @@ class BaselineAgent(CaptureAgent):
         wallCount = 0
         positionsToCheck = [(i, j - 1), (i + 1, j), (i, j + 1), (i - 1, j)] # North, East, South, West
 
+        possiblyOpenPosition = False
         for x, y in positionsToCheck:
           if gameState.hasWall(x, y):
             wallCount += 1
-        
-        # If Position is Surrounded by 1 or 0 Walls, Add to List
-        if wallCount < 2:
+
+          if (x, y) in self.openPositions:
+            possiblyOpenPosition = True
+
+        # If Position is Surrounded by 3 Walls, Add to List
+        if wallCount == 3:
           self.openPositions.append((i, j))
+
+        # If Position is Next to Open Position and has 2 Walls, Add to List
+        if possiblyOpenPosition:
+          if wallCount == 2:
+            self.openPositions.append((i, j))
 
     return self.openPositions
 

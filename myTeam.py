@@ -166,6 +166,7 @@ class BaselineAgent(CaptureAgent):
 
   def getOpenPositions(self, gameState: GameState):
     self.openPositions = []
+    deadEnds = []
     for i in range(self.mapWidth):
       for j in range(self.mapHeight):
         # Don't Check Position that is a Wall
@@ -188,23 +189,23 @@ class BaselineAgent(CaptureAgent):
         wallCount = 0
         positionsToCheck = [(i, j - 1), (i + 1, j), (i, j + 1), (i - 1, j)] # North, East, South, West
 
-        possiblyOpenPosition = False
+        nextToDeadEnd = False
         for x, y in positionsToCheck:
           if gameState.hasWall(x, y):
             wallCount += 1
-
-          if (x, y) in self.openPositions:
-            possiblyOpenPosition = True
-
-        # If Position is Surrounded by 3 Walls, Add to List
-        if wallCount == 3:
+          if (x, y) in deadEnds:
+            nextToDeadEnd = True
+        
+        # If Position is Surrounded by 1 or 0 Walls, Add to List
+        if wallCount <= 2:
           self.openPositions.append((i, j))
+        
+        if nextToDeadEnd and (wallCount == 2):
+          deadEnds.append((i, j))
 
-        # If Position is Next to Open Position and has 2 Walls, Add to List
-        if possiblyOpenPosition:
-          if wallCount == 2:
-            self.openPositions.append((i, j))
-
+        if wallCount == 3:
+          deadEnds.append((i, j))
+        
     return self.openPositions
 
   def getDistanceMapToOpenPositions(self, gameState: GameState, openPositions):
@@ -389,7 +390,7 @@ class OffensiveAgentV2(BaselineAgent):
         self.holdingPoints = 0  
       
       # Return Home is Threshold is Reached - Therefore is Returning!
-      if self.holdingPoints > self.returnHomeThreshold:
+      if self.holdingPoints >= self.returnHomeThreshold:
 
         enemyIndexes = self.getOpponents(gameState)
 

@@ -165,12 +165,20 @@ class BaselineAgent(CaptureAgent):
     return row == 0 or row == self.mapWidth - 1 or column == 0 or column == self.mapHeight - 1
 
   def getOpenPositions(self, gameState: GameState):
-    openPositions = []
+    self.openPositions = []
     for i in range(self.mapWidth):
       for j in range(self.mapHeight):
         # Don't Check Position that is a Wall
         if gameState.hasWall(i, j):
           continue
+
+        # TODO: CHECK THIS APPLIES TO ALL GAMES
+        if self.isRed:
+          if i < self.middleOfMap[0]:
+            continue 
+        else:
+          if i > self.middleOfMap[0]:
+            continue
 
         # Don't Check Row or Column that is on Edge of Map
         if self.isRowOrColumnEdge(i, j):
@@ -186,9 +194,9 @@ class BaselineAgent(CaptureAgent):
         
         # If Position is Surrounded by 1 or 0 Walls, Add to List
         if wallCount < 2:
-          openPositions.append((i, j))
+          self.openPositions.append((i, j))
 
-    return openPositions
+    return self.openPositions
 
   def getDistanceMapToOpenPositions(self, gameState: GameState, openPositions):
     distanceMapToOpenPositions = {}

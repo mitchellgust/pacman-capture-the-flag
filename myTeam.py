@@ -379,18 +379,28 @@ class OffensiveAgentV2(BaselineAgent):
           if enemyPosition and gameState.getAgentState(enemyIndex).scaredTimer == 0:
             observableEnemyPositions.append(enemyPosition)
 
-        # Get Entrances where Non Scared Enemy is not on the left of agent
+
+        # Mark Entrances as Safe if Enemy is Not Near Entrance
+        range = 3
+        safeEntrances = []
         if observableEnemyPositions:
-          safeEntrances = []
           for entrance in self.entrancePositions:
+
+            # Decrease the Enemy Range if Agent is Closer to Entrance than Enemy
+            distanceToEntrance = self.getMazeDistance(currentPosition, entrance)
+            if (distanceToEntrance < range):
+              range = distanceToEntrance
+
             for enemyPosition in observableEnemyPositions:
-              # if x of enemy is less than the x of agent
-              print("Enemy Position " + enemyPosition[0] + " Agent Position " + currentPosition[0])
-              if enemyPosition[0] < currentPosition[0]:
+              if self.getMazeDistance(entrance, enemyPosition) >= range:
                 safeEntrances.append(entrance)
+
         else:
           # If No Observable Enemies, All Entrances are Safe
           safeEntrances = self.entrancePositions
+
+        print("Enemy: ", enemyPosition, "Current: ", currentPosition)
+
 
         # Closest Safe Entrance
         closestEntrance = min(safeEntrances, key=lambda x: self.getMazeDistance(currentPosition, x))

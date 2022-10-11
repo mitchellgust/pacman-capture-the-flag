@@ -367,7 +367,7 @@ class OffensiveAgentV2(BaselineAgent):
       if currentPosition in self.entrancePositions:
         self.holdingPoints = 0      
       
-      # Return Home is Threshold is Reached
+      # Return Home is Threshold is Reached - Therefore is Returning!
       if self.holdingPoints > self.returnHomeThreshold:
 
         enemyIndexes = self.getOpponents(gameState)
@@ -379,12 +379,14 @@ class OffensiveAgentV2(BaselineAgent):
           if enemyPosition and gameState.getAgentState(enemyIndex).scaredTimer == 0:
             observableEnemyPositions.append(enemyPosition)
 
-        # Get Entrances where Non Scared Enemy is at least 3 steps away
+        # Get Entrances where Non Scared Enemy is not on the left of agent
         if observableEnemyPositions:
           safeEntrances = []
           for entrance in self.entrancePositions:
             for enemyPosition in observableEnemyPositions:
-              if self.getMazeDistance(entrance, enemyPosition) > 3:
+              # if x of enemy is less than the x of agent
+              print("Enemy Position " + enemyPosition[0] + " Agent Position " + currentPosition[0])
+              if enemyPosition[0] < currentPosition[0]:
                 safeEntrances.append(entrance)
         else:
           # If No Observable Enemies, All Entrances are Safe

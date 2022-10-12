@@ -97,6 +97,17 @@ class BaselineAgent(CaptureAgent):
     self.isRed = self.index in gameState.getRedTeamIndices()
     offset = RED_TEAM_OFFSET if self.isRed else BLUE_TEAM_OFFSET
     self.middleOfMap = (middleColumn + offset, middleRow)
+    # Ensure that the middle of the map is not a wall and find an alternative if it is
+    if self.middleOfMap in self.wallPositions:
+      goodCandidates = []
+      iteration = 1
+      while not goodCandidates:
+        above = (middleColumn + offset, middleRow + iteration)
+        below = (middleColumn + offset, middleRow - iteration)
+        goodCandidates.append(above) if above not in self.wallPositions else None
+        goodCandidates.append(below) if below not in self.wallPositions else None
+        iteration += 1
+      self.middleOfMap = random.choice(goodCandidates)      
 
     # Calculate Entrance Positions
     self.entrancePositions = self.getEntrancePositions(gameState, middleColumn, offset)
@@ -220,10 +231,6 @@ class DefensiveReflexAgent(BaselineAgent):
     # By default - Put Agent near the middle of the maze, priorititising the location to be in a conjestion of food
     # TODO: UNCOMMENT THIS TO GET EXAMPLE OF PACMAN EATING A CAPSULE
     
-    # print("Current Position: ", currentPosition)
-    # print("Goal Position: ", goalPosition)
-    # print("Target Position: ", self.currentTarget)
-    # print("Middle of Map: ", self.middleOfMap)
 
     if currentPosition == goalPosition:
       goalPosition = self.middleOfMap 
@@ -273,19 +280,11 @@ class DefensiveReflexAgent(BaselineAgent):
         # self.debugDraw(successors3AwayFromEnemy, [1, 0, 0], clear=False)
         successorClosestToCurrentPosition = min(successors3AwayFromEnemy, key=lambda x: self.getMazeDistance(currentPosition, x), default=self.middleOfMap)
         goalPosition = successorClosestToCurrentPosition
-        
-  
-    # print("Goal Position: ", goalPosition)
-    # print("Current Position: ", currentPosition)
 
     best_action = self.aStarSearch(
         currentPosition, goalPosition, self.wallPositions, util.manhattanDistance)
 
-    # print("Best Action: ", best_action)
-    # print("\n")
-
     self.currentTarget = goalPosition   
-    
     return best_action
   
 

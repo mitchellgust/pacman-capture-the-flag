@@ -193,18 +193,10 @@ class BaselineAgent(CaptureAgent):
         for x, y in positionsToCheck:
           if gameState.hasWall(x, y):
             wallCount += 1
-          if (x, y) in deadEnds:
-            nextToDeadEnd = True
         
         # If Position is Surrounded by 1 or 0 Walls, Add to List
         if wallCount <= 2:
           self.openPositions.append((i, j))
-        
-        if nextToDeadEnd and (wallCount == 2):
-          deadEnds.append((i, j))
-
-        if wallCount == 3:
-          deadEnds.append((i, j))
         
     return self.openPositions
 
@@ -352,8 +344,9 @@ class OffensiveAgentV2(BaselineAgent):
 
     currentPosition = gameState.getAgentPosition(self.index)
 
-    # debug draw openPositions
-    self.debugDraw(self.getOpenPositions(gameState), [1, 0, 0], clear=False)
+    closedPositions = self.getClosedPositions(gameState)
+    print("Closed Positions: ", closedPositions)
+    self.debugDraw(closedPositions, [1, 0, 0], clear=False)
 
     if currentPosition in self.getOpenPositions(gameState):
       print("Current Position is in Open Positions")
@@ -405,18 +398,18 @@ class OffensiveAgentV2(BaselineAgent):
         safeEntrances = self.entrancePositions
 
         # Mark Entrances as Safe if Enemy is Not Near Entrance
-        range = 3
+        targetRange = 3
         if observableEnemyPositions:
           for entrance in self.entrancePositions:
 
             # Decrease the Enemy Range if Agent is Closer to Entrance than Enemy
             distanceToEntrance = self.getMazeDistance(currentPosition, entrance)
-            if (distanceToEntrance < range):
-              range = distanceToEntrance
+            if (distanceToEntrance < targetRange):
+              targetRange = distanceToEntrance
 
             for enemyPosition in observableEnemyPositions:
               # Find one instance of enemy near entrance -> Not Safe
-              if self.getMazeDistance(entrance, enemyPosition) <= range:
+              if self.getMazeDistance(entrance, enemyPosition) <= targetRange:
                 safeEntrances.remove(entrance)
                 break
 
@@ -493,6 +486,102 @@ class OffensiveAgentV2(BaselineAgent):
     legalActions = gameState.getLegalActions(self.index)
 
     return self.getBestActionFromScoreMap(legalActions, self.scoreMap, currentPosition)
+
+  def getClosedPositions(self, gameState: GameState):
+    closedPositions = []
+    for x in range(self.mapWidth):
+      for y in range(self.mapHeight):
+        # Ignore Walls
+        if (x, y) in self.wallPositions:
+          continue
+
+        positionInfo = self.getSurroundingInformation(gameState, (x, y))
+        wallCount = positionInfo["wallCount"]
+        notWallPositions = positionInfo["notWallPositions"]
+
+        # If Dead End - Surrounded by 3 Walls
+        if wallCount >= 3: # Also Considers Odd Case of 4 Walls (Box)
+          closedPositions.append((x, y))
+
+          # Look at Surrounding Positions that are not Walls 
+          # - Expect Maximum 1 Position
+          if len(notWallPositions) == 1:
+
+              # Look at Next Position that is not a wall
+              positionToCheck1 = notWallPositions.pop()
+
+              # Get Wall Count and Surrounding Positions
+              positionInfo = self.getSurroundingInformation(gameState, positionToCheck1)
+              wallCount = positionInfo["wallCount"]
+              notWallPositions = positionInfo["notWallPositions"]
+
+              # Don't Consider Previous Position
+              notWallPositions.remove((x, y))
+
+              # Dead End Found next to Existing Dead End
+              #      __  
+              # | __ __ |     (2 walls) next to (3 walls)
+              #
+              if wallCount == 2:
+                closedPositions.append(positionToCheck1)
+
+                # Search for Tunnel of Positions with 2 Walls
+                #      __ __ 
+                # | __ __ __ |     (2 walls) next to (2 walls) next to (3 walls)
+                #
+                
+                while len(notWallPositions) == 1:
+
+                  if wallCount == 2:
+                    closedPositions.append(positionToCheck1)
+
+                  # Look at Next Position that is not a wall
+                  positionToCheck2 = notWallPositions.pop()
+
+                  # Get Wall Count and Surrounding Positions
+                  positionInfo = self.getSurroundingInformation(gameState, positionToCheck2)
+                  wallCount = positionInfo["wallCount"]
+                  notWallPositions = positionInfo["notWallPositions"]
+
+                  notWallPositions.remove(positionToCheck1)
+
+                  # Dead End Found
+                  if wallCount == 2:
+                    closedPositions.append(positionToCheck2)
+
+                    # Look at Next Position that is not a wall
+                    positionToCheck1 = notWallPositions.pop()
+
+                    # Get Wall Count and Surrounding Positions
+                    positionInfo = self.getSurroundingInformation(gameState, positionToCheck1)
+                    wallCount = positionInfo["wallCount"]
+                    notWallPositions = positionInfo["notWallPositions"]
+
+                    notWallPositions.remove(positionToCheck2)
+
+    return closedPositions
+
+  def getSurroundingInformation(self, gameState: GameState, position: tuple):
+    x, y = position
+    positionsToCheck = [(x, y - 1), (x + 1, y), (x, y + 1), (x - 1, y)] 
+    # North, East, South, West
+
+    wallCount = 0
+    notWallPositions = []
+
+    for x, y in positionsToCheck:
+      # Get Number of Walls Surrounding Position
+      if gameState.hasWall(x, y):
+        wallCount += 1
+      # Get Surrounding Positions that are not Walls
+      else:
+        notWallPositions.append((x, y))
+
+    surroundingInfo = dict()
+    surroundingInfo["wallCount"] = wallCount
+    surroundingInfo["notWallPositions"] = notWallPositions
+
+    return surroundingInfo
 
   def getRewardMap(self, gameState: GameState):
     food = self.getFood(gameState).asList()

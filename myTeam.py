@@ -450,7 +450,7 @@ class OffensiveAgentV2(BaselineAgent):
           print("Closest Enemy: ", enemyPosition)
 
           # If Enemy is Within Range
-          if enemyPosition and self.getMazeDistance(currentPosition, enemyPosition) <= range:
+          if enemyPosition and self.getMazeDistance(currentPosition, enemyPosition) <= targetRange:
             
             newPosition = Actions.getSuccessor(currentPosition, best_action)
 

@@ -1,4 +1,5 @@
 .vscode
+replays/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -177,3 +178,4 @@ fabric.properties
 .idea
 gmon.out
 score
+capture.py

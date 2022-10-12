@@ -220,10 +220,10 @@ class DefensiveReflexAgent(BaselineAgent):
     # By default - Put Agent near the middle of the maze, priorititising the location to be in a conjestion of food
     # TODO: UNCOMMENT THIS TO GET EXAMPLE OF PACMAN EATING A CAPSULE
     
-    print("Current Position: ", currentPosition)
-    print("Goal Position: ", goalPosition)
-    print("Target Position: ", self.currentTarget)
-    print("Middle of Map: ", self.middleOfMap)
+    # print("Current Position: ", currentPosition)
+    # print("Goal Position: ", goalPosition)
+    # print("Target Position: ", self.currentTarget)
+    # print("Middle of Map: ", self.middleOfMap)
 
     if currentPosition == goalPosition:
       goalPosition = self.middleOfMap 
@@ -275,14 +275,14 @@ class DefensiveReflexAgent(BaselineAgent):
         goalPosition = successorClosestToCurrentPosition
         
   
-    print("Goal Position: ", goalPosition)
-    print("Current Position: ", currentPosition)
+    # print("Goal Position: ", goalPosition)
+    # print("Current Position: ", currentPosition)
 
     best_action = self.aStarSearch(
         currentPosition, goalPosition, self.wallPositions, util.manhattanDistance)
 
-    print("Best Action: ", best_action)
-    print("\n")
+    # print("Best Action: ", best_action)
+    # print("\n")
 
     self.currentTarget = goalPosition   
     
@@ -333,8 +333,8 @@ class OffensiveAgentV2(BaselineAgent):
     # Debugging ----------------
     self.debugDraw(closedPositions, [1, 0, 0], clear=False)
 
-    if currentPosition in self.getClosedPositions(gameState):
-      print("Current Position is in Closed Positions")
+    # if currentPosition in self.getClosedPositions(gameState):
+      # print("Current Position is in Closed Positions")
     # --------------------------
 
     # Analyse New Move

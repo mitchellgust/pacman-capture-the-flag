@@ -178,3 +178,4 @@ fabric.properties
 .idea
 gmon.out
 score
+capture.py

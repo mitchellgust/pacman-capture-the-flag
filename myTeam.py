@@ -413,6 +413,11 @@ class OffensiveAgentV2(BaselineAgent):
     height = self.mapHeight
 
     gameState = self.getCurrentObservation()
+    currentPosition = gameState.getAgentPosition(self.index)
+    
+    previousObservation = self.getPreviousObservation()
+    previousPosition = previousObservation.getAgentPosition(self.index) if previousObservation else None
+    
     enemyIndexes = self.getOpponents(gameState)
     observableEnemyIndexes = [
         enemyIndex for enemyIndex in enemyIndexes if gameState.getAgentPosition(enemyIndex)]
@@ -421,14 +426,19 @@ class OffensiveAgentV2(BaselineAgent):
     unscaredEnemyPositions = [gameState.getAgentPosition(
         enemyIndex) for enemyIndex in observableEnemyIndexes if gameState.getAgentState(enemyIndex).scaredTimer == 0]
     
+    observableEnemyIndexesOfCurrentAgent = [
+        enemyIndex for enemyIndex in observableEnemyIndexes if util.manhattanDistance(gameState.getAgentPosition(enemyIndex), currentPosition) <= 5]
+    unscaredEnemyPositionsOfCurrentAgent = [gameState.getAgentPosition(
+        enemyIndex) for enemyIndex in observableEnemyIndexesOfCurrentAgent if gameState.getAgentState(enemyIndex).scaredTimer == 0]
+      
+    
     positionsAdjacentToUnscaredEnemies = set()
     for enemyPosition in unscaredEnemyPositions:
       successors = self.getSuccessors(enemyPosition, walls)
       successorsAsTuples = [successor.state for successor in successors]
       positionsAdjacentToUnscaredEnemies.update(successorsAsTuples)
     positionsAdjacentToUnscaredEnemies = list(positionsAdjacentToUnscaredEnemies)
-
-    previousObservation = self.getPreviousObservation()
+    
     for x in range(width):
       for y in range(height):
         cell = (x, y)
@@ -437,9 +447,9 @@ class OffensiveAgentV2(BaselineAgent):
         elif cell in unscaredEnemyPositions or cell in positionsAdjacentToUnscaredEnemies:
           scoreMap[x][y] = self.ghostReward
         elif cell in food:
-          distanceToFood = self.getMazeDistance(gameState.getAgentPosition(self.index), cell)
+          distanceToFood = self.getMazeDistance(currentPosition, cell)
           currentfoodReward = self.foodReward * 0.9 ** distanceToFood
-          if len(unscaredEnemyPositions) > 0:
+          if len(unscaredEnemyPositionsOfCurrentAgent) > 0:
             foodRisk = self.distanceMapToOpenPositions[cell]
             scoreMap[x][y] = -200 if foodRisk > 1 else currentfoodReward
           else: 
@@ -448,7 +458,7 @@ class OffensiveAgentV2(BaselineAgent):
           scoreMap[x][y] = self.scaredGhostReward
         elif cell in capsules:
           scoreMap[x][y] = self.capsuleReward
-        elif cell in [self.getPreviousObservation().getAgentPosition(self.index) if previousObservation is not None else None]:
+        elif cell in [previousPosition if previousObservation is not None else None]:
           scoreMap[x][y] = self.lastPositionReward
         else:
           scoreMap[x][y] = self.defaultReward

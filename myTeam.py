@@ -343,13 +343,15 @@ class OffensiveAgentV2(BaselineAgent):
       self.distanceMapToOpenPositions = self.getDistanceMapToOpenPositions(gameState, openPositions)
 
     currentPosition = gameState.getAgentPosition(self.index)
-
     closedPositions = self.getClosedPositions(gameState)
+
+    # Debugging ----------------
     print("Closed Positions: ", closedPositions)
     self.debugDraw(closedPositions, [1, 0, 0], clear=False)
 
     if currentPosition in self.getOpenPositions(gameState):
       print("Current Position is in Open Positions")
+    # --------------------------
 
     # Analyse New Move
     if self.getPreviousObservation():
@@ -420,64 +422,6 @@ class OffensiveAgentV2(BaselineAgent):
 
         best_action = self.aStarSearch(
             currentPosition, closestEntrance, self.walls, util.manhattanDistance)
-
-        # Get Legal Actions that are not dead ends
-        deadEndPositions = self.getOpenPositions(gameState)
-        legalActions = gameState.getLegalActions(self.index)
-        legalActions.remove(Directions.STOP)
-
-        print("Legal Actions are: ", legalActions)
-
-        for action in legalActions:
-          successorPosition = Actions.getSuccessor(currentPosition, action)
-
-          if successorPosition not in deadEndPositions:
-            legalActions.remove(action)
-
-        print("Legal Actions not Deadends are: ", legalActions)
-        best_action = legalActions[0]
-
-        # Only 2 Ways to Go? Make Sure Pacman (p) Not Getting Closer to a Ghost (g) on next move
-        # |--------
-        #   g <p> 
-        # |--------
-        if len(legalActions) == 2:
-          print("Number of Legal Actions: " + str(len(legalActions)))
-
-          # Get Closest Enemy
-          enemyPosition = min(observableEnemyPositions, key=lambda x: self.getMazeDistance(currentPosition, x), default=None)
-
-          print("Closest Enemy: ", enemyPosition)
-
-          # If Enemy is Within Range
-          if enemyPosition and self.getMazeDistance(currentPosition, enemyPosition) <= targetRange:
-            
-            newPosition = Actions.getSuccessor(currentPosition, best_action)
-
-            currentDistanceToEnemy = self.getMazeDistance(currentPosition, enemyPosition)
-            newDistanceToEnemy = self.getMazeDistance(newPosition, enemyPosition)
-
-            smartActions = []
-            # Getting Closer to Closest Enemy on "Best Move"?
-            if newDistanceToEnemy < currentDistanceToEnemy:
-
-              # Find Another Action to Move Away from Enemy
-              smartActions = gameState.getLegalActions(self.index)
-              smartActions.remove(Directions.STOP)
-              smartActions.remove(best_action)
-
-              # Remove Actions that Lead to Dead End
-              deadEndPositions = self.getOpenPositions(gameState)
-
-              for action in smartActions:
-                newPosition = Actions.getSuccessor(currentPosition, action)
-
-                if newPosition in deadEndPositions:
-                  smartActions.remove(action)
-
-            # Take action that gets you closer to the closestEntrance
-            # Default "Best Action" if No Smart Actions
-            best_action = min(smartActions, key=lambda x: self.getMazeDistance(Actions.getSuccessor(currentPosition, x), closestEntrance), default=best_action) 
 
         return best_action
 

@@ -219,6 +219,12 @@ class DefensiveReflexAgent(BaselineAgent):
     # Function 1
     # By default - Put Agent near the middle of the maze, priorititising the location to be in a conjestion of food
     # TODO: UNCOMMENT THIS TO GET EXAMPLE OF PACMAN EATING A CAPSULE
+    
+    print("Current Position: ", currentPosition)
+    print("Goal Position: ", goalPosition)
+    print("Target Position: ", self.currentTarget)
+    print("Middle of Map: ", self.middleOfMap)
+
     if currentPosition == goalPosition:
       goalPosition = self.middleOfMap 
     
@@ -269,8 +275,15 @@ class DefensiveReflexAgent(BaselineAgent):
         goalPosition = successorClosestToCurrentPosition
         
   
+    print("Goal Position: ", goalPosition)
+    print("Current Position: ", currentPosition)
+
     best_action = self.aStarSearch(
         currentPosition, goalPosition, self.wallPositions, util.manhattanDistance)
+
+    print("Best Action: ", best_action)
+    print("\n")
+
     self.currentTarget = goalPosition   
     
     return best_action
@@ -287,7 +300,7 @@ class OffensiveAgentV2(BaselineAgent):
     self.ghostReward = -1000
     self.capsuleReward = 40
     self.defaultReward = -0.1
-    self.returnHomeThreshold = 2
+    self.returnHomeThreshold = 3
     self.gamma = 0.9
 
     self.walls = gameState.getWalls().asList()
@@ -598,6 +611,7 @@ class OffensiveAgentV2(BaselineAgent):
 
     maxScoreIdx = actionScores.index(max(actionScores))
     maxScoreChoice = actions[maxScoreIdx]
+
     return maxScoreChoice
 
   def bellmannUpdate(self, scoreMap, cell, reward):

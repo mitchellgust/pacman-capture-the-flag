@@ -164,42 +164,6 @@ class BaselineAgent(CaptureAgent):
   def isRowOrColumnEdge(self, row, column):
     return row == 0 or row == self.mapWidth - 1 or column == 0 or column == self.mapHeight - 1
 
-  def getOpenPositions(self, gameState: GameState):
-    self.openPositions = []
-    deadEnds = []
-    for i in range(self.mapWidth):
-      for j in range(self.mapHeight):
-        # Don't Check Position that is a Wall
-        if gameState.hasWall(i, j):
-          continue
-
-        # TODO: CHECK THIS APPLIES TO ALL GAMES
-        if self.isRed:
-          if i < self.middleOfMap[0]:
-            continue 
-        else:
-          if i > self.middleOfMap[0]:
-            continue
-
-        # Don't Check Row or Column that is on Edge of Map
-        if self.isRowOrColumnEdge(i, j):
-          continue
-
-        # For All Other Positions, Count Surrounding Walls
-        wallCount = 0
-        positionsToCheck = [(i, j - 1), (i + 1, j), (i, j + 1), (i - 1, j)] # North, East, South, West
-
-        nextToDeadEnd = False
-        for x, y in positionsToCheck:
-          if gameState.hasWall(x, y):
-            wallCount += 1
-        
-        # If Position is Surrounded by 1 or 0 Walls, Add to List
-        if wallCount <= 2:
-          self.openPositions.append((i, j))
-        
-    return self.openPositions
-
   def getDistanceMapToOpenPositions(self, gameState: GameState, openPositions):
     distanceMapToOpenPositions = {}
     # Get Distance from Every Position to Closest Open Position
@@ -331,6 +295,12 @@ class OffensiveAgentV2(BaselineAgent):
     self.mapHeight = gameState.data.layout.height
     self.scoreMap = self.getNewMap(self.walls)
     self.holdingPoints = 0
+
+    self.allPositions = []
+    for i in range(self.mapWidth):
+      for j in range(self.mapHeight):
+        if (i, j) not in self.walls:
+          self.allPositions.append((i, j))
     
     self.distanceMapToOpenPositions = None
     
@@ -339,18 +309,19 @@ class OffensiveAgentV2(BaselineAgent):
   def chooseAction(self, gameState: GameState):
     # Create Map of Minimum Distances to Positions with 1 or 0 surrounding walls
     if self.distanceMapToOpenPositions is None:
-      openPositions = self.getOpenPositions(gameState)
-      self.distanceMapToOpenPositions = self.getDistanceMapToOpenPositions(gameState, openPositions)
+      closedPositions = self.getClosedPositions(gameState)
+      self.openPositions = [position for position in self.allPositions if position not in closedPositions]
+
+      self.distanceMapToOpenPositions = self.getDistanceMapToOpenPositions(gameState, self.openPositions)
 
     currentPosition = gameState.getAgentPosition(self.index)
     closedPositions = self.getClosedPositions(gameState)
 
     # Debugging ----------------
-    print("Closed Positions: ", closedPositions)
     self.debugDraw(closedPositions, [1, 0, 0], clear=False)
 
-    if currentPosition in self.getOpenPositions(gameState):
-      print("Current Position is in Open Positions")
+    if currentPosition in self.getClosedPositions(gameState):
+      print("Current Position is in Closed Positions")
     # --------------------------
 
     # Analyse New Move
@@ -438,6 +409,14 @@ class OffensiveAgentV2(BaselineAgent):
         # Ignore Walls
         if (x, y) in self.wallPositions:
           continue
+
+        # Ignore Own Team's Closed Positions
+        if self.isRed:
+          if x < self.middleOfMap[0]:
+            continue 
+        else:
+          if x > self.middleOfMap[0]:
+            continue
 
         positionInfo = self.getSurroundingInformation(gameState, (x, y))
         wallCount = positionInfo["wallCount"]

@@ -391,6 +391,8 @@ class OffensiveAgentV2(BaselineAgent):
             distanceToEntrance = self.getMazeDistance(currentPosition, entrance)
             if (distanceToEntrance < targetRange):
               targetRange = distanceToEntrance
+            else:
+              targetRange = 3 #Reset Target Range
 
             for enemyPosition in observableEnemyPositions:
               # Find one instance of enemy near entrance -> Not Safe

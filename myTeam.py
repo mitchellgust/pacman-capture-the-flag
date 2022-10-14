@@ -403,7 +403,8 @@ class OffensiveAgentV2(BaselineAgent):
         # If No Observable Enemies, All Entrances are Safe
 
         # Closest Safe Entrance
-        closestEntrance = min(safeEntrances, key=lambda x: self.getMazeDistance(currentPosition, x))
+        closestEntrance = min(safeEntrances, key=lambda x: self.getMazeDistance(currentPosition, x), default=random.choice(self.entrancePositions)) 
+        # Default to Random Entrance if No Entrance considered Safe
 
         best_action = self.aStarSearch(
             currentPosition, closestEntrance, self.walls, util.manhattanDistance)

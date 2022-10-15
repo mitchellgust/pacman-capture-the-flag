@@ -381,8 +381,6 @@ class OffensiveAgentV2(BaselineAgent):
 
         # Initalise All Entrances as Safe
         safeEntrances = self.entrancePositions.copy()
-        print("All Entrance: ")
-        print(self.entrancePositions)
 
         # Mark Entrances as Safe if Enemy is Not Near Entrance
         targetRange = 3
@@ -405,8 +403,6 @@ class OffensiveAgentV2(BaselineAgent):
         # If No Observable Enemies, All Entrances are Safe
 
         # Safe Entrances
-        print("Safe Entrances: ")
-        print(safeEntrances)
 
         # Closest Safe Entrance
         closestEntrance = min(safeEntrances, key=lambda x: self.getMazeDistance(currentPosition, x), default=random.choice(self.entrancePositions)) 
@@ -574,7 +570,7 @@ class OffensiveAgentV2(BaselineAgent):
           currentfoodReward = self.foodReward * 0.9 ** distanceToFood
           if len(unscaredEnemyPositionsOfCurrentAgent) > 0:
             foodRisk = self.distanceMapToOpenPositions[cell]
-            scoreMap[x][y] = -200 if foodRisk > 1 else currentfoodReward
+            scoreMap[x][y] = -200 if foodRisk > 0 else currentfoodReward
           else: 
             scoreMap[x][y] = currentfoodReward
         elif cell in scaredEnemyPositions:

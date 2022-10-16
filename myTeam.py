@@ -24,7 +24,7 @@ import util
 #################
 
 def createTeam(firstIndex, secondIndex, isRed,
-               first='OffensiveAgentV2', second='DefensiveReflexAgent', numTraining=0):
+               first='OffensiveAgentV2', second='DefensiveAgent', numTraining=0):
   """
   This function should return a list of two agents that will form the
   team, initialized using firstIndex and secondIndex as their agent
@@ -199,7 +199,7 @@ class BaselineAgent(CaptureAgent):
     return distanceMapToOpenPositions
 
 
-class DefensiveReflexAgent(BaselineAgent):
+class DefensiveAgent(BaselineAgent):
   def registerInitialState(self, gameState: GameState):
     super().registerInitialState(gameState)
     

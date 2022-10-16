@@ -24,7 +24,7 @@ import util
 #################
 
 def createTeam(firstIndex, secondIndex, isRed,
-               first='OffensiveAgentV2', second='DefensiveReflexAgent', numTraining=0):
+               first='OffensiveAgentV2', second='DefensiveAgent', numTraining=0):
   """
   This function should return a list of two agents that will form the
   team, initialized using firstIndex and secondIndex as their agent
@@ -199,7 +199,7 @@ class BaselineAgent(CaptureAgent):
     return distanceMapToOpenPositions
 
 
-class DefensiveReflexAgent(BaselineAgent):
+class DefensiveAgent(BaselineAgent):
   def registerInitialState(self, gameState: GameState):
     super().registerInitialState(gameState)
     
@@ -330,7 +330,7 @@ class OffensiveAgentV2(BaselineAgent):
     closedPositions = self.getClosedPositions(gameState)
 
     # Debugging ----------------
-    self.debugDraw(closedPositions, [1, 0, 0], clear=False)
+    # self.debugDraw(closedPositions, [1, 0, 0], clear=False)
 
     # if currentPosition in self.getClosedPositions(gameState):
       # print("Current Position is in Closed Positions")
@@ -380,7 +380,7 @@ class OffensiveAgentV2(BaselineAgent):
             observableEnemyPositions.append(enemyPosition)
 
         # Initalise All Entrances as Safe
-        safeEntrances = self.entrancePositions
+        safeEntrances = self.entrancePositions.copy()
 
         # Mark Entrances as Safe if Enemy is Not Near Entrance
         targetRange = 3
@@ -391,6 +391,8 @@ class OffensiveAgentV2(BaselineAgent):
             distanceToEntrance = self.getMazeDistance(currentPosition, entrance)
             if (distanceToEntrance < targetRange):
               targetRange = distanceToEntrance
+            else:
+              targetRange = 3 #Reset Target Range
 
             for enemyPosition in observableEnemyPositions:
               # Find one instance of enemy near entrance -> Not Safe
@@ -400,8 +402,11 @@ class OffensiveAgentV2(BaselineAgent):
 
         # If No Observable Enemies, All Entrances are Safe
 
+        # Safe Entrances
+
         # Closest Safe Entrance
-        closestEntrance = min(safeEntrances, key=lambda x: self.getMazeDistance(currentPosition, x))
+        closestEntrance = min(safeEntrances, key=lambda x: self.getMazeDistance(currentPosition, x), default=random.choice(self.entrancePositions)) 
+        # Default to Random Entrance if No Entrance considered Safe
 
         best_action = self.aStarSearch(
             currentPosition, closestEntrance, self.walls, util.manhattanDistance)
@@ -565,7 +570,7 @@ class OffensiveAgentV2(BaselineAgent):
           currentfoodReward = self.foodReward * 0.9 ** distanceToFood
           if len(unscaredEnemyPositionsOfCurrentAgent) > 0:
             foodRisk = self.distanceMapToOpenPositions[cell]
-            scoreMap[x][y] = -200 if foodRisk > 1 else currentfoodReward
+            scoreMap[x][y] = -200 if foodRisk > 0 else currentfoodReward
           else: 
             scoreMap[x][y] = currentfoodReward
         elif cell in scaredEnemyPositions:

@@ -330,7 +330,7 @@ class OffensiveAgentV2(BaselineAgent):
     closedPositions = self.getClosedPositions(gameState)
 
     # Debugging ----------------
-    self.debugDraw(closedPositions, [1, 0, 0], clear=False)
+    # self.debugDraw(closedPositions, [1, 0, 0], clear=False)
 
     # if currentPosition in self.getClosedPositions(gameState):
       # print("Current Position is in Closed Positions")
